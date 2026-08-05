@@ -4,22 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="GrindBridge — convert coffee grind settings between grinders using microns as the common currency. Offline, private, no accounts.">
+<meta name="description" content="Grist — convert coffee grind settings between grinders using microns as the common currency. Offline, private, no accounts.">
 <meta name="author" content="soyboycore">
-<title>GrindBridge — Coffee Grind Size Converter</title>
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8f8">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0f0e">
+<title>Grist — Coffee Grind Size Converter</title>
 <style>
-/* GrindBridge — single-file app. Author: soyboycore. */
+/* Grist — single-file app. Author: soyboycore. */
 :root{
-  --bg:#f6f1ea; --panel:#fffdf9; --panel2:#f0e8dc; --ink:#2a221b; --muted:#7a6c5d;
-  --line:#e2d6c5; --accent:#a9662f; --accent-ink:#fff; --good:#3f7d4e; --warn:#b5541c;
-  --bad:#b23b32; --chip:#efe4d4; --shadow:0 1px 3px rgba(60,40,20,.10),0 6px 18px rgba(60,40,20,.06);
+  --bg:#f7f8f8; --panel:#ffffff; --panel2:#f0f2f2; --ink:#101413; --muted:#5f6b68;
+  --line:#e0e5e4; --accent:#0d9488; --accent-ink:#fff; --good:#15803d; --warn:#b45309;
+  --bad:#b91c1c; --chip:#e7ecec; --shadow:0 1px 2px rgba(16,20,19,.06),0 6px 18px rgba(16,20,19,.05);
   --radius:14px; --tap:44px;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#181410; --panel:#221c16; --panel2:#2b241c; --ink:#f0e7db; --muted:#a99a86;
-    --line:#3a3026; --accent:#d68c4f; --accent-ink:#231910; --good:#79c48c; --warn:#e0925a;
-    --bad:#e88178; --chip:#2f271e; --shadow:0 1px 3px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+    --bg:#0a0f0e; --panel:#131a19; --panel2:#1b2423; --ink:#e8eceb; --muted:#8d9c99;
+    --line:#24302e; --accent:#2dd4bf; --accent-ink:#06201d; --good:#4ade80; --warn:#fbbf24;
+    --bad:#f87171; --chip:#1f2a28; --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.45);
   }
 }
 *{box-sizing:border-box}
@@ -37,7 +39,7 @@ button{font:inherit;cursor:pointer}
 .wrap{max-width:720px;margin:0 auto;padding:0 14px 90px}
 header.app{padding:16px 14px 8px;max-width:720px;margin:0 auto;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 header.app .logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
-header.app .logo span{color:var(--accent)}
+header.app .logo .dot{display:inline-block;width:.44em;height:.44em;border-radius:50%;background:var(--accent);margin-right:.36em;vertical-align:.06em}
 header.app .tag{color:var(--muted);font-size:.82rem}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0;box-shadow:var(--shadow)}
 .card.tight{padding:12px}
@@ -116,7 +118,7 @@ footer.app a{color:var(--accent)}
 </head>
 <body>
 <header class="app">
-  <div class="logo">Grind<span>Bridge</span></div>
+  <div class="logo"><i class="dot" aria-hidden="true"></i>Grist</div>
   <div class="tag">grind size converter · microns as the common currency</div>
 </header>
 
@@ -257,13 +259,13 @@ footer.app a{color:var(--accent)}
 <script>
 "use strict";
 /* ============================================================
-   GrindBridge — coffee grind-size converter
-   Author: soyboycore · https://github.com/soyboycore/grind-converter
+   Grist — coffee grind-size converter
+   Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v1.0.0";
+const APP_VERSION = "v1.1.0";
 const SCHEMA_VERSION = 1;
-const STORE_KEY = "grindbridge.v1";
+const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
 /* -------- brew-method global micron targets (§5) -------- */
 const DEFAULT_METHODS = [
@@ -605,7 +607,12 @@ function defaultState(){
 }
 function load(){
   try{
-    const raw=localStorage.getItem(STORE_KEY);
+    let raw=localStorage.getItem(STORE_KEY);
+    if(!raw){
+      // carry over data saved under the pre-rename key
+      const legacy=localStorage.getItem(LEGACY_STORE_KEY);
+      if(legacy){ raw=legacy; try{ localStorage.setItem(STORE_KEY, legacy); localStorage.removeItem(LEGACY_STORE_KEY); }catch(e){} }
+    }
     if(!raw){ state=defaultState(); return; }
     const s=JSON.parse(raw);
     if(s.schemaVersion!==SCHEMA_VERSION){ state=defaultState(); return; }
@@ -1235,7 +1242,7 @@ function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url; a.download="grindbridge-backup.json"; a.click();
+  a.href=url; a.download="grist-backup.json"; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function importData(file){
@@ -1243,7 +1250,7 @@ function importData(file){
   r.onload=()=>{
     try{
       const s=JSON.parse(r.result);
-      if(!s.schemaVersion||!Array.isArray(s.grinders)) throw "Not a GrindBridge backup.";
+      if(!s.schemaVersion||!Array.isArray(s.grinders)) throw "Not a Grist backup.";
       if(s.schemaVersion!==SCHEMA_VERSION) throw "Different schema version.";
       state=s; save(); refreshAll();
       alert("Imported successfully.");
@@ -1352,8 +1359,8 @@ function loadSetup(s){
    ============================================================ */
 function initFooterAndDisclaimer(){
   $("#appFooter").innerHTML=
-    `GrindBridge ${APP_VERSION} · by <b>soyboycore</b> · `+
-    `<a href="https://github.com/soyboycore/grind-converter" target="_blank" rel="noopener">source on GitHub</a><br>`+
+    `Grist ${APP_VERSION} · by <b>soyboycore</b> · `+
+    `<a href="https://github.com/soyboycore/grist" target="_blank" rel="noopener">source on GitHub</a><br>`+
     `Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates — dial in by taste. MIT licensed.`;
   $("#mainDisclaimer").innerHTML=
     `<b>Results are starting points.</b> Burr wear, alignment, zero-point drift, and bean density mean the final 10% is dialed by taste. `+

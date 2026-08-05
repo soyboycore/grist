@@ -1,6 +1,6 @@
 # Implementation Brief: Grind Size Converter
 
-Build **GrindBridge** — an interactive coffee grind-size converter as a **single, self-contained HTML file** (inline CSS + vanilla JS, zero external requests, zero build step). English UI. All user data in `localStorage`. It must work fully offline once saved to disk.
+Build **Grist** — an interactive coffee grind-size converter as a **single, self-contained HTML file** (inline CSS + vanilla JS, zero external requests, zero build step). English UI. All user data in `localStorage`. It must work fully offline once saved to disk.
 
 ## 1. Product goal
 
@@ -115,8 +115,8 @@ The repo will be public on GitHub and served via GitHub Pages. Alongside the app
 
 - **`index.html`** — the app itself (named exactly this so Pages serves it at the repo root URL).
 - **`LICENSE`** — MIT, exactly `Copyright (c) 2026 soyboycore`. Do not use any other name anywhere in the repo.
-- **`README.md`** — what the tool is, a "Live demo" link (`https://soyboycore.github.io/grind-converter/`), feature list, how to add a custom grinder (3 lines), the accuracy disclaimer, a **Data sources & credits** section ("Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates — dial in by taste"), and the license note.
-- **In-app footer** — small credits line with the same attribution, a link to `https://github.com/soyboycore/grind-converter`, and the app version (e.g. `v1.0.0`, kept in one constant).
+- **`README.md`** — what the tool is, a "Live demo" link (`https://soyboycore.github.io/grist/`), feature list, how to add a custom grinder (3 lines), the accuracy disclaimer, a **Data sources & credits** section ("Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates — dial in by taste"), and the license note.
+- **In-app footer** — small credits line with the same attribution, a link to `https://github.com/soyboycore/grist`, and the app version (e.g. `v1.0.0`, kept in one constant).
 - **Attribution constraint:** the author is `soyboycore` everywhere — LICENSE, README, footer, meta tags, code comments. Never write a real personal name or any company name into this repo.
 - Keep the "community estimate" badges and disclaimer from §4 — they matter for publishing honestly.
 

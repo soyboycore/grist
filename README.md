@@ -1,14 +1,14 @@
-# GrindBridge
+# Grist
 
 **Convert coffee grind settings between grinders — using microns (median particle size) as the common currency.**
 
-You know a recipe's setting on one grinder and want the equivalent on another. GrindBridge normalizes every grinder's setting to a particle size in microns, then converts to the target grinder's **native notation** — clicks, numbered sub-steps, rotations, stepless dials, and more.
+You know a recipe's setting on one grinder and want the equivalent on another. Grist normalizes every grinder's setting to a particle size in microns, then converts to the target grinder's **native notation** — clicks, numbered sub-steps, rotations, stepless dials, and more.
 
 It's a **single, self-contained HTML file**: inline CSS + vanilla JS, zero external requests, zero build step. All your data lives in your browser's `localStorage`. It works fully offline — save `index.html` to disk and open it.
 
 ## Live demo
 
-**https://soyboycore.github.io/grind-converter/**
+**https://soyboycore.github.io/grist/**
 
 ## Features
 
@@ -39,7 +39,7 @@ Results are **starting points, not gospel.** Burr wear, alignment, zero-point dr
 
 ## Data sources & credits
 
-Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates — dial in by taste. GrindBridge does not scrape or hotlink any external data at runtime; all figures are baked into the file and are fully user-editable.
+Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates — dial in by taste. Grist does not scrape or hotlink any external data at runtime; all figures are baked into the file and are fully user-editable.
 
 ## License
 
