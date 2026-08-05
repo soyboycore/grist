@@ -41,8 +41,11 @@ html,body{margin:0;padding:0}
 body{
   background:var(--bg); color:var(--ink);
   font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  -webkit-text-size-adjust:100%; padding-bottom:env(safe-area-inset-bottom);
+  -webkit-text-size-adjust:100%;
 }
+/* No safe-area padding on body: the tab bar is the last element and owns the
+   inset itself, so padding here too would leave a gap below the bar once
+   scrolled to the very bottom. */
 h1,h2,h3{margin:0 0 .4em;line-height:1.2}
 h2{font-size:1.15rem}
 h3{font-size:1rem}
@@ -51,7 +54,7 @@ a{color:var(--accent)}
    double-tap-to-zoom, which made repeated +/- presses zoom the page.
    Pinch-zoom is untouched, so accessibility zoom still works. */
 button{font:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:720px;margin:0 auto;padding:0 14px 90px}
+.wrap{max-width:720px;margin:0 auto;padding:0 14px calc(90px + env(safe-area-inset-bottom))}
 header.app{padding:16px 14px 8px;max-width:720px;margin:0 auto;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 header.app .logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
 header.app .logo .dot{display:inline-block;width:.44em;height:.44em;border-radius:50%;background:var(--accent);margin-right:.36em;vertical-align:.06em}
@@ -108,7 +111,11 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--bg)
 .swap{display:flex;justify-content:center;margin:4px 0}
 .swapbtn{border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:6px 14px;font-weight:600;color:var(--accent)}
 /* nav */
-nav.tabs{position:sticky;bottom:0;left:0;right:0;background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;z-index:20}
+/* The bar sticks to the very bottom of the viewport, so on an installed iOS
+   app it would sit under the home indicator. Padding it by the safe-area
+   inset lifts the buttons clear while the bar's background still runs to the
+   screen edge. Resolves to 0 everywhere there is no inset. */
+nav.tabs{position:sticky;bottom:0;left:0;right:0;background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{flex:1;border:0;background:none;color:var(--muted);padding:9px 2px 8px;font-size:.7rem;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:var(--tap)}
 nav.tabs button .ic{font-size:1.2rem;line-height:1}
 nav.tabs button[aria-selected=true]{color:var(--accent)}
@@ -312,7 +319,7 @@ footer.app a{color:var(--accent)}
    Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v1.4.0";
+const APP_VERSION = "v1.4.1";
 const SCHEMA_VERSION = 1;
 const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
