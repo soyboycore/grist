@@ -66,7 +66,11 @@ body{
 h1,h2,h3{margin:0}
 .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
 button{font:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;color:inherit}
-input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+select{-webkit-appearance:none;appearance:none}
+select:focus{outline:none}
+/* keyboard users still get a ring; pointer taps do not */
+select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 @keyframes gDrift1{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(-28px,36px,0) scale(1.14)}66%{transform:translate3d(24px,-20px,0) scale(.93)}}
 @keyframes gDrift2{0%,100%{transform:translate3d(0,0,0) scale(1.06)}50%{transform:translate3d(32px,-42px,0) scale(.9)}}
@@ -117,11 +121,16 @@ main{flex:1;position:relative;z-index:1;padding-bottom:140px}
 .outTol{font:500 13px "IBM Plex Mono",monospace;color:var(--ink-muted)}
 .outUnit{font:500 13px "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:2px;position:relative;z-index:1}
 /* draggable: taller hit area than the drawn track, and pan is ours not the page's */
-.miniScale{margin:12px 4px 0;position:relative;height:38px;touch-action:none;cursor:ew-resize;user-select:none;-webkit-user-select:none}
-.miniScale .marker{transition:left .06s linear}
-.miniScale .track{position:absolute;left:0;right:0;top:11px;height:9px;border-radius:5px;background:rgba(42,26,16,.1)}
-.miniScale .band{position:absolute;top:11px;height:9px;border-radius:5px;background:var(--scale-band)}
-.miniScale .marker{position:absolute;top:2px;width:5px;height:27px;border-radius:3px;background:var(--ink);box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+/* A readout, not a control. Deliberately unlike the setting slider below:
+   thin rule, caret above rather than a grabbable handle, axis end labels,
+   and inert to pointers so a stray drag does nothing. */
+.miniScale{margin:14px 6px 0;position:relative;height:34px;pointer-events:none}
+.miniScale .track{position:absolute;left:0;right:0;top:15px;height:5px;border-radius:3px;background:rgba(42,26,16,.09)}
+.miniScale .band{position:absolute;top:15px;height:5px;border-radius:3px;background:var(--scale-band)}
+.miniScale .marker{position:absolute;top:15px;width:2px;height:5px;background:var(--ink);transform:translateX(-1px)}
+.miniScale .marker::before{content:"";position:absolute;left:-4px;top:-9px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--ink)}
+.miniScale .ends{position:absolute;left:0;right:0;top:23px;display:flex;justify-content:space-between}
+.miniScale .ends span{font:500 12.5px "IBM Plex Mono",monospace;color:var(--ink-faint)}
 .stateChip{display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.7);font:600 12.5px "IBM Plex Sans",sans-serif;position:relative;z-index:1}
 .stateChip .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 
@@ -341,6 +350,7 @@ main{flex:1;position:relative;z-index:1;padding-bottom:140px}
           <div class="track"></div>
           <div class="band" id="scaleBand"></div>
           <div class="marker" id="scaleMarker"></div>
+          <div class="ends"><span>150</span><span>1300 µm</span></div>
         </div>
         <div class="stateChip" id="stateChip"><span class="dot"></span><span id="stateChipText"></span></div>
       </div>
@@ -609,7 +619,7 @@ main{flex:1;position:relative;z-index:1;padding-bottom:140px}
    Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v2.1.0";
+const APP_VERSION = "v2.2.0";
 const SCHEMA_VERSION = 1;
 const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
@@ -1045,35 +1055,11 @@ function nativeFmt(sc, pos){ return formatSetting(sc, pos).replace(" clicks","")
    current position, read straight off the grinder's own (possibly
    multi-anchor, non-linear) curve — not a global (hi-lo)/(max-min) formula,
    which breaks the moment a grinder has more than two anchors. */
-/* The mini scale's span, hoisted so the drag handler shares it with render. */
+/* The mini scale's micron span. It is a readout only — making it draggable
+   fought the finger, because a drag has to snap to the nearest detent and the
+   marker then jumps back to the snapped value instead of tracking the touch.
+   The setting slider below is the control; this reports where you landed. */
 const SCALE_LO=150, SCALE_HI=1300;
-
-/* Dragging the scale sets a particle size directly, which back-solves the
-   source setting. It looks like a slider because it behaves like one — the
-   alternative was making it look inert, and reading a value off it is the
-   whole point of drawing it. */
-function scaleSetFromPointer(e){
-  const el=$("#miniScale"); if(!el) return;
-  const r=el.getBoundingClientRect(); if(!r.width) return;
-  const t=Math.max(0, Math.min(1, (e.clientX-r.left)/r.width));
-  const um=SCALE_LO + t*(SCALE_HI-SCALE_LO);
-  const g=currentSrc();
-  const pos=snapPos(g.scheme, clampPos(g.scheme, micronToPos(g, um)));
-  if(pos===state.ui.pos) return;               // no haptic/render churn on no-op
-  state.ui.pos=pos; buzz(); save(); renderConvert();
-}
-function wireMiniScale(){
-  const el=$("#miniScale"); if(!el) return;
-  let dragging=false;
-  el.addEventListener("pointerdown", e=>{
-    dragging=true;
-    if(el.setPointerCapture) el.setPointerCapture(e.pointerId);
-    scaleSetFromPointer(e); e.preventDefault();
-  });
-  el.addEventListener("pointermove", e=>{ if(dragging) scaleSetFromPointer(e); });
-  el.addEventListener("pointerup", ()=>{ dragging=false; });
-  el.addEventListener("pointercancel", ()=>{ dragging=false; });
-}
 
 function targetTolerance(g, pos){
   const sc=g.scheme;
@@ -1933,14 +1919,18 @@ function maybeRequestTiltPermission(){
     attachTilt();
   }
 }
-/* iOS requires requestPermission() from a user gesture, which is why the tilt
-   effect used to start only once you opened Kitchen view. Once granted, a
-   repeat call resolves silently — so remember the grant and re-arm on the
-   first touch anywhere, and never re-prompt someone who declined. */
-function restoreTiltIfGranted(){
-  if(state.ui.tilt==="denied") { vm._tiltRequested=true; return; }
-  if(state.ui.tilt!=="granted") return;
-  const arm=()=>{ maybeRequestTiltPermission(); };
+/* iOS only allows requestPermission() from a user gesture, so a prompt on load
+   is impossible — the first touch anywhere is as close to launch as the
+   platform permits, and it means tilt works everywhere instead of only after
+   a Kitchen view visit. Asked at most once ever: a grant is remembered and
+   re-arms silently on later launches, a refusal is never re-prompted. */
+function armTiltOnFirstGesture(){
+  if(state.ui.tilt==="denied"){ vm._tiltRequested=true; return; }
+  const arm=()=>{
+    document.removeEventListener("pointerdown", arm);
+    document.removeEventListener("touchstart", arm);
+    maybeRequestTiltPermission();
+  };
   document.addEventListener("pointerdown", arm, {once:true});
   document.addEventListener("touchstart", arm, {once:true, passive:true});
 }
@@ -2185,8 +2175,7 @@ function init(){
   vm.cat = methodCategory(currentMethod());
 
   wireStatic();
-  wireMiniScale();
-  restoreTiltIfGranted();
+  armTiltOnFirstGesture();
   renderScreens();
   renderAll();
   initInstall();
