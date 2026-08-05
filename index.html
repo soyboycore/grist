@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <meta name="description" content="Grist — convert coffee grind settings between grinders using microns as the common currency. Offline, private, no accounts.">
 <meta name="author" content="soyboycore">
-<meta name="theme-color" id="themeColor" content="#f7f8f8">
+<meta name="theme-color" content="#fffcfb">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="icon" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Grist">
@@ -16,300 +16,577 @@
 <title>Grist — Coffee Grind Size Converter</title>
 <style>
 /* Grist — single-file app. Author: soyboycore. */
+
+/* Self-hosted IBM Plex — no CDN, no Google Fonts, works from file://. */
+@font-face{
+  font-family:"IBM Plex Sans"; font-style:normal; font-weight:500 700;
+  font-display:swap; src:url("fonts/plex-sans-var.woff2") format("woff2-variations"),
+                          url("fonts/plex-sans-var.woff2") format("woff2");
+}
+@font-face{
+  font-family:"IBM Plex Mono"; font-style:normal; font-weight:500;
+  font-display:swap; src:url("fonts/plex-mono-500.woff2") format("woff2");
+}
+@font-face{
+  font-family:"IBM Plex Mono"; font-style:normal; font-weight:600;
+  font-display:swap; src:url("fonts/plex-mono-600.woff2") format("woff2");
+}
+@font-face{
+  font-family:"IBM Plex Mono"; font-style:normal; font-weight:700;
+  font-display:swap; src:url("fonts/plex-mono-700.woff2") format("woff2");
+}
+
 :root{
-  --bg:#f7f8f8; --panel:#ffffff; --panel2:#f0f2f2; --ink:#101413; --muted:#5f6b68;
-  --line:#e0e5e4; --accent:#0d9488; --accent-ink:#fff; --good:#15803d; --warn:#b45309;
-  --bad:#b91c1c; --chip:#e7ecec; --shadow:0 1px 2px rgba(16,20,19,.06),0 6px 18px rgba(16,20,19,.05);
-  --radius:14px; --tap:44px;
-}
-/* dark applies when the system asks for it, unless light is explicitly chosen */
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0a0f0e; --panel:#131a19; --panel2:#1b2423; --ink:#e8eceb; --muted:#8d9c99;
-    --line:#24302e; --accent:#2dd4bf; --accent-ink:#06201d; --good:#4ade80; --warn:#fbbf24;
-    --bad:#f87171; --chip:#1f2a28; --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.45);
-  }
-}
-/* ...and when dark is explicitly chosen, whatever the system says */
-:root[data-theme="dark"]{
-  --bg:#0a0f0e; --panel:#131a19; --panel2:#1b2423; --ink:#e8eceb; --muted:#8d9c99;
-  --line:#24302e; --accent:#2dd4bf; --accent-ink:#06201d; --good:#4ade80; --warn:#fbbf24;
-  --bad:#f87171; --chip:#1f2a28; --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.45);
+  --ink:#2a1a10; --ink-muted:rgba(42,26,16,.78); --ink-faint:rgba(42,26,16,.5);
+  --accent:#8d3f57; --accent-slider:#9d4f66; --accent-deep:#7d3850; --on-accent:#fff4f6;
+  --good-ink:#1d5c3c; --good-bg:rgba(46,120,80,.18);
+  --warn-ink:#7a4409; --warn-bg:rgba(196,120,40,.16); --warn-border:rgba(150,86,20,.45);
+  --danger-ink:#9c3535; --danger-border:rgba(160,60,60,.32);
+  --scale-band:linear-gradient(90deg,#a9cbb7,#c9849b);
+  --tap:44px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;height:100%}
 body{
-  background:var(--bg); color:var(--ink);
-  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  min-height:100%;
+  color:var(--ink);
+  font:500 15px/1.45 "IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   -webkit-text-size-adjust:100%;
+  background:
+    radial-gradient(105% 66% at 86% -6%, #ffd3de 0%, rgba(255,211,222,0) 62%),
+    radial-gradient(95% 58% at 12% 22%, #ffe6ee 0%, rgba(255,230,238,0) 55%),
+    radial-gradient(125% 72% at 8% 106%, #cfe3d3 0%, rgba(207,227,211,0) 66%),
+    radial-gradient(80% 46% at 96% 78%, #e6f0e3 0%, rgba(230,240,227,0) 60%),
+    linear-gradient(#fffcfb, #f6f0ef);
+  background-attachment:fixed;
+  overflow-x:hidden;
 }
-/* No safe-area padding on body: the tab bar is the last element and owns the
-   inset itself, so padding here too would leave a gap below the bar once
-   scrolled to the very bottom. */
-h1,h2,h3{margin:0 0 .4em;line-height:1.2}
-h2{font-size:1.15rem}
-h3{font-size:1rem}
-a{color:var(--accent)}
-/* touch-action:manipulation stops a fast second tap being read as
-   double-tap-to-zoom, which made repeated +/- presses zoom the page.
-   Pinch-zoom is untouched, so accessibility zoom still works. */
-button{font:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:720px;margin:0 auto;padding:0 14px calc(90px + env(safe-area-inset-bottom))}
-header.app{padding:16px 14px 8px;max-width:720px;margin:0 auto;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-header.app .logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
-header.app .logo .dot{display:inline-block;width:.44em;height:.44em;border-radius:50%;background:var(--accent);margin-right:.36em;vertical-align:.06em}
-header.app .tag{color:var(--muted);font-size:.82rem}
-header.app .themeSet{margin-left:auto;display:flex;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px}
-header.app .themeSet button{border:0;background:none;color:var(--muted);font-size:.74rem;font-weight:600;padding:5px 10px;border-radius:999px;min-height:0;letter-spacing:.01em}
-header.app .themeSet button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
-header.app .themeSet button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0;box-shadow:var(--shadow)}
-.card.tight{padding:12px}
-label{display:block;font-weight:600;font-size:.82rem;color:var(--muted);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}
-select,input[type=text],input[type=number],textarea{
-  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
-  background:var(--panel2);color:var(--ink);font:inherit;min-height:var(--tap)
-}
-textarea{min-height:70px;resize:vertical}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
-.row{display:flex;gap:10px}
-.row>*{flex:1;min-width:0}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.muted{color:var(--muted)}
-.small{font-size:.82rem}
-.tiny{font-size:.74rem}
-.err{color:var(--bad);font-size:.82rem;margin-top:5px;min-height:1em}
-.warnbox{background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:.85rem}
-.badge{display:inline-block;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:20px;vertical-align:middle}
-.badge.est{background:var(--chip);color:var(--muted);border:1px solid var(--line)}
-.badge.ver{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
-/* setting input + steppers */
-.setting{display:flex;gap:8px;align-items:stretch}
-.setting input{flex:1}
-.stepbtn{width:var(--tap);min-width:var(--tap);border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;font-size:1.3rem;font-weight:700;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
-.stepbtn:active{background:var(--accent);color:var(--accent-ink)}
-/* drag slider — the finger-friendly way to move through the range */
-.sliderRow{margin-top:12px}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:0;padding:0;background:none;border:0;min-height:0;touch-action:pan-y}
-input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--line)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-11px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);box-shadow:var(--shadow)}
-input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
-input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--accent);border:2px solid var(--panel)}
-/* the thumb carries the focus indicator, so suppress the box around the track */
-input[type=range]:focus{outline:none}
-input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
-input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
-.sliderEnds{display:flex;justify-content:space-between;color:var(--muted);font-size:.74rem;margin-top:-3px}
-#installRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#installRow #installMsg{flex:1;min-width:180px;color:var(--muted)}
-#installRow .btn{white-space:nowrap}
-/* result */
-.result{background:var(--panel2);border-radius:12px;padding:14px;margin-top:6px;text-align:center}
-.result .big{font-size:2.2rem;font-weight:800;letter-spacing:-.02em;line-height:1.05}
-.result .um{font-size:1.05rem;color:var(--accent);font-weight:700;margin-top:2px}
-.result .sub{color:var(--muted);font-size:.85rem;margin-top:4px}
-.swap{display:flex;justify-content:center;margin:4px 0}
-.swapbtn{border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:6px 14px;font-weight:600;color:var(--accent)}
-/* nav */
-/* The bar sticks to the very bottom of the viewport, so on an installed iOS
-   app it would sit under the home indicator. Padding it by the safe-area
-   inset lifts the buttons clear while the bar's background still runs to the
-   screen edge. Resolves to 0 everywhere there is no inset. */
-nav.tabs{position:sticky;bottom:0;left:0;right:0;background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
-nav.tabs button{flex:1;border:0;background:none;color:var(--muted);padding:9px 2px 8px;font-size:.7rem;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:var(--tap)}
-nav.tabs button .ic{font-size:1.2rem;line-height:1}
-nav.tabs button[aria-selected=true]{color:var(--accent)}
-section.tab{display:none}
-section.tab.active{display:block}
-/* pills */
-.pills{display:flex;flex-wrap:wrap;gap:8px}
-.pill{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:20px;padding:8px 12px;font-size:.85rem;font-weight:600}
-.pill[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;padding:10px 14px;font-weight:600;min-height:var(--tap)}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn.ghost{background:none}
-.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 50%,var(--line))}
-.btn.full{width:100%}
-.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.list{list-style:none;margin:0;padding:0}
-.list li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--panel2)}
-.list li .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line)}
-.kv:last-child{border-bottom:0}
-.disclaimer{font-size:.78rem;color:var(--muted);background:var(--panel2);border:1px dashed var(--line);border-radius:10px;padding:9px 11px;margin-top:10px}
-/* modal */
-.modal-bg{position:fixed;inset:0;background:rgba(20,12,4,.5);display:none;align-items:flex-end;justify-content:center;z-index:50}
-.modal-bg.open{display:flex}
-.modal{background:var(--panel);border-radius:18px 18px 0 0;max-width:720px;width:100%;max-height:92vh;overflow:auto;padding:16px 14px calc(20px + env(safe-area-inset-bottom));box-shadow:var(--shadow)}
-@media(min-width:600px){.modal-bg{align-items:center}.modal{border-radius:18px}}
-.modal h2{display:flex;justify-content:space-between;align-items:center}
-.x{border:0;background:none;font-size:1.5rem;color:var(--muted);width:36px;height:36px}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.scaleWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-footer.app{max-width:720px;margin:0 auto;padding:18px 16px 26px;color:var(--muted);font-size:.76rem;text-align:center;border-top:1px solid var(--line)}
-footer.app a{color:var(--accent)}
-.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{flex:1;border:0;background:var(--panel2);color:var(--ink);padding:10px;font-weight:600}
-.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+/* No safe-area padding on body: sheets and the tab bar pad by the inset
+   themselves, so padding here too would double it up. */
+h1,h2,h3{margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+
+@keyframes gDrift1{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(-28px,36px,0) scale(1.14)}66%{transform:translate3d(24px,-20px,0) scale(.93)}}
+@keyframes gDrift2{0%,100%{transform:translate3d(0,0,0) scale(1.06)}50%{transform:translate3d(32px,-42px,0) scale(.9)}}
+@keyframes gDrift3{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-36px,-24px,0) scale(1.12)}}
+@keyframes gSheet{0%{transform:translateY(101%)}72%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+@keyframes gZoomIn{0%{opacity:0;transform:scale(1.045)}60%{opacity:1}100%{opacity:1;transform:scale(1)}}
+@keyframes gZoomOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.035)}}
+@keyframes gFade{from{opacity:0}to{opacity:1}}
+@keyframes gRise{0%{opacity:0;transform:translateY(16px) scale(.994)}55%{opacity:1}78%{transform:translateY(-2.5px) scale(1.002)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes gPop{0%{opacity:0;transform:translateY(10px) scale(.95)}62%{opacity:1;transform:translateY(-2px) scale(1.015)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes gSweep{0%{opacity:0;transform:translateX(-130%) rotate(10deg)}10%{opacity:1}42%{opacity:1}54%{opacity:0;transform:translateX(340%) rotate(10deg)}100%{opacity:0;transform:translateX(340%) rotate(10deg)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+.mist{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+.mist1{top:-60px;right:-70px;width:300px;height:300px;background:radial-gradient(circle,rgba(255,169,192,.72),rgba(255,169,192,0) 70%);filter:blur(26px);animation:gDrift1 26s ease-in-out infinite}
+.mist2{bottom:-90px;left:-80px;width:330px;height:330px;background:radial-gradient(circle,rgba(150,205,175,.6),rgba(150,205,175,0) 70%);filter:blur(30px);animation:gDrift2 34s ease-in-out infinite}
+.mist3{top:38%;left:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(255,214,228,.6),rgba(255,214,228,0) 70%);filter:blur(24px);animation:gDrift3 30s ease-in-out infinite}
+
+.app{position:relative;max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+
+/* section tabs (Convert / Start here) + Kitchen view button */
+.screenTabs{display:flex;align-items:center;gap:22px;padding:14px 14px 0 20px;position:relative;z-index:2}
+.screenTab{min-height:40px;border:0;background:none;padding:0 0 6px;font:600 17px "IBM Plex Sans",sans-serif;letter-spacing:-.01em;color:var(--ink-muted);border-bottom:2.5px solid transparent;transition:color .3s ease}
+.screenTab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.kitchenBtn{margin-left:auto;min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.32);backdrop-filter:blur(32px) saturate(200%);-webkit-backdrop-filter:blur(32px) saturate(200%);border-radius:999px;font:600 12px "IBM Plex Sans",sans-serif;color:var(--ink)}
+
+main{flex:1;position:relative;z-index:1;padding-bottom:140px}
+.screen{display:none}
+.screen.on{display:block;animation:gRise .52s cubic-bezier(.19,.9,.24,1)}
+
+/* glass */
+.glass{background:rgba(255,255,255,.34);backdrop-filter:blur(44px) saturate(210%);-webkit-backdrop-filter:blur(44px) saturate(210%);border:1px solid rgba(255,255,255,.9);box-shadow:0 20px 50px rgba(120,70,90,.16),inset 0 1px 0 rgba(255,255,255,1);border-radius:30px}
+.glass2{background:rgba(255,255,255,.28);backdrop-filter:blur(40px) saturate(200%);-webkit-backdrop-filter:blur(40px) saturate(200%);border:1px solid rgba(255,255,255,.85);box-shadow:0 16px 40px rgba(120,70,90,.14),inset 0 1px 0 rgba(255,255,255,1);border-radius:18px}
+
+/* ---- Convert result card ---- */
+.resultCard{margin:10px 12px 0;padding:12px 12px 14px;border-radius:30px;position:relative;overflow:hidden;text-align:center}
+.sweep{position:absolute;top:-40%;left:-20%;width:64px;height:180%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.6),rgba(255,255,255,0));transform:rotate(10deg);animation:gSweep 9s ease-in-out infinite;pointer-events:none}
+.pairRow{display:flex;align-items:center;gap:7px;position:relative;z-index:1}
+.pairRow select{flex:1;min-width:0;min-height:44px;padding:0 10px;border:1px solid rgba(255,255,255,.9);border-radius:14px;background:rgba(255,255,255,.5);font:600 13px "IBM Plex Sans",sans-serif;color:var(--ink);appearance:none;-webkit-appearance:none}
+.pairRow select.tgt{border:1px solid rgba(141,63,87,.42);background:rgba(255,226,233,.62);color:var(--accent-deep)}
+.swapBtn{width:44px;height:44px;flex:none;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.5);border-radius:14px;font:600 17px "IBM Plex Sans",sans-serif;color:var(--accent)}
+.outRow{display:flex;align-items:baseline;justify-content:center;gap:10px;margin-top:10px;position:relative;z-index:1}
+.outValue{font:600 64px/1 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:var(--ink)}
+.outTol{font:500 13px "IBM Plex Mono",monospace;color:var(--ink-muted)}
+.outUnit{font:500 13px "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:2px;position:relative;z-index:1}
+.miniScale{margin:12px 4px 0;position:relative;height:30px}
+.miniScale .track{position:absolute;left:0;right:0;top:11px;height:9px;border-radius:5px;background:rgba(42,26,16,.1)}
+.miniScale .band{position:absolute;top:11px;height:9px;border-radius:5px;background:var(--scale-band)}
+.miniScale .marker{position:absolute;top:2px;width:5px;height:27px;border-radius:3px;background:var(--ink);box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+.stateChip{display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.7);font:600 12.5px "IBM Plex Sans",sans-serif;position:relative;z-index:1}
+.stateChip .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.clampBanner{margin:10px 12px 0;padding:11px 14px;border-radius:18px;background:var(--warn-bg);border:1px solid var(--warn-border);font:500 12.5px/1.45 "IBM Plex Sans",sans-serif;color:var(--warn-ink)}
+
+.methodRow{width:calc(100% - 24px);margin:10px 12px 0;min-height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border:0;text-align:left}
+.methodRow span:first-child{font:600 13.5px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.methodRow .band{display:flex;align-items:center;gap:9px;font-weight:500;color:var(--ink-muted);font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+
+.settingCard{margin:10px 12px 0;padding:12px 14px 14px;border-radius:30px}
+.settingRow{display:flex;align-items:center;gap:10px}
+.stepBtn{width:64px;height:64px;flex:none;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.45);border-radius:22px;font:600 27px "IBM Plex Sans",sans-serif;color:var(--ink);user-select:none;-webkit-user-select:none}
+.stepBtn.active{background:var(--ink);color:var(--on-accent);transform:scale(.95)}
+.settingMid{flex:1;text-align:center}
+.settingValue{font:600 40px/1 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink)}
+.settingUnit{font:500 12.5px "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:4px}
+.settingCard input[type=range]{width:100%;margin:8px 0 0;accent-color:var(--accent-slider);height:34px}
+
+.saveDialinBtn{width:calc(100% - 24px);margin:10px 12px 0;min-height:48px;border:0;background:var(--accent);color:var(--on-accent);border-radius:16px;font:600 13.5px "IBM Plex Sans",sans-serif;box-shadow:0 8px 20px rgba(141,63,87,.26)}
+
+/* ---- Start here ---- */
+.eyebrow{font:600 12px "IBM Plex Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+.guideTitle{font:600 26px/1.15 "IBM Plex Sans",sans-serif;letter-spacing:-.02em;color:var(--ink);margin-top:5px}
+.catSeg{display:flex;gap:3px;background:rgba(255,255,255,.24);backdrop-filter:blur(32px) saturate(190%);-webkit-backdrop-filter:blur(32px) saturate(190%);border:1px solid rgba(255,255,255,.8);border-radius:15px;padding:3px}
+.catSeg button{flex:1;min-height:36px;border:0;border-radius:12px;background:transparent;color:var(--ink-muted);font:600 12.5px "IBM Plex Sans",sans-serif}
+.catSeg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(80,45,15,.16)}
+.methodChips{display:flex;gap:7px;margin-top:9px;overflow-x:auto;padding-bottom:2px}
+.methodChips button{flex:none;min-height:40px;border-radius:14px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.45);color:var(--ink);font:600 12.5px "IBM Plex Sans",sans-serif;padding:0 15px;white-space:nowrap}
+.methodChips button.on{background:rgba(42,26,16,.88);color:var(--on-accent);border-color:rgba(42,26,16,.9)}
+.recCard{margin:14px 12px 0;padding:20px 18px}
+.recRow{display:flex;align-items:baseline;gap:9px;margin-top:8px}
+.recRow .lohi{font:600 54px/1 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--ink)}
+.recRow .dash{font:500 28px "IBM Plex Mono",monospace;color:var(--ink-faint)}
+.recSub{font:500 13px "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:8px}
+.useMidBtn{width:100%;min-height:48px;margin-top:16px;border:0;background:var(--accent);color:var(--on-accent);border-radius:16px;font:600 14px "IBM Plex Sans",sans-serif;box-shadow:0 8px 20px rgba(141,63,87,.28)}
+.tasteCard{margin:12px;padding:16px 18px}
+.tasteTitle{font:600 13px "IBM Plex Sans",sans-serif;color:var(--ink);margin-bottom:10px}
+.tasteRow{display:flex;gap:8px}
+.tasteBtn{flex:1;min-height:58px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.45);border-radius:16px;color:var(--ink);font:600 13px "IBM Plex Sans",sans-serif;line-height:1.3}
+.tasteBtn small{display:block;font-weight:500;font-size:12.5px;color:var(--ink-muted)}
+.adviceText{font:500 12.5px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.82);margin-top:11px;line-height:1.45}
+
+/* ---- Library ---- */
+.libTitle{padding:10px 20px 0}
+.libTitle .h{font:600 26px "IBM Plex Sans",sans-serif;letter-spacing:-.02em;color:var(--ink)}
+.libSeg{margin:12px 12px 0;display:flex;gap:3px;background:rgba(255,255,255,.24);backdrop-filter:blur(32px) saturate(190%);-webkit-backdrop-filter:blur(32px) saturate(190%);border:1px solid rgba(255,255,255,.8);border-radius:15px;padding:3px}
+.libSeg button{flex:1;min-height:38px;border:0;border-radius:12px;background:transparent;color:var(--ink-muted);font:600 12.5px "IBM Plex Sans",sans-serif}
+.libSeg button.on{background:rgba(255,255,255,.95);color:var(--ink)}
+.libPanel{margin:12px;padding:14px 14px 14px}
+.libPanel .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.libPanel .head .label{font:600 12px "IBM Plex Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
+.addPill{min-height:40px;padding:0 14px;border:1px solid rgba(141,63,87,.45);background:rgba(255,255,255,.55);border-radius:999px;font:600 12px "IBM Plex Sans",sans-serif;color:var(--accent)}
+.rowList{display:grid;gap:8px}
+.backupRow{display:flex;gap:8px}
+.backupRow .miniBtn{flex:1}
+.setupRow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.85)}
+.setupRow .main{flex:1;min-height:44px;text-align:left;border:0;background:none;padding:0}
+.setupRow .name{font:600 14px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.setupRow .sub{font:500 13px "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:2px}
+.setupRow .um{font:600 12.5px "IBM Plex Mono",monospace;color:var(--ink-muted)}
+.setupRow .del{width:44px;height:44px;flex:none;border:0;background:none;font:600 17px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.6)}
+.hint{font:500 12.5px "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:12px;text-align:center}
+.emptyState{padding:26px 18px 22px;text-align:center}
+.emptyDots{display:flex;justify-content:center;align-items:flex-end;gap:6px;height:26px}
+.emptyDots span{border-radius:50%;background:rgba(141,63,87,.5)}
+.emptyTitle{font:600 15px "IBM Plex Sans",sans-serif;color:var(--ink);margin-top:16px}
+.emptyBody{font:500 12.5px/1.5 "IBM Plex Sans",sans-serif;color:var(--ink-muted);margin-top:6px}
+.emptyCta{min-height:46px;margin-top:16px;padding:0 20px;border:0;background:var(--accent);color:var(--on-accent);border-radius:14px;font:600 13px "IBM Plex Sans",sans-serif}
+
+.entryRow{padding:10px 12px 10px 14px;border-radius:20px;background:rgba(255,255,255,.32);border:1px solid rgba(255,255,255,.85)}
+.entryRow.selected{background:rgba(255,255,255,.6)}
+.entryRow .main{width:100%;min-height:44px;text-align:left;border:0;background:none;padding:0}
+.entryRow .nameLine{display:flex;align-items:center;gap:7px}
+.entryRow .nameLine .n{font:600 15px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.entryRow .badge{font:600 9.5px "IBM Plex Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:5px}
+.entryRow .badge.ver{background:var(--good-bg);color:var(--good-ink)}
+.entryRow .badge.est{background:rgba(42,26,16,.07);color:var(--ink-muted)}
+.entryRow .range{display:block;font:500 13px "IBM Plex Mono",monospace;color:var(--ink-muted);margin-top:3px}
+.entryRow .band{font:500 13px "IBM Plex Mono",monospace;color:var(--ink-muted)}
+.entryRow .actions{display:flex;gap:7px;margin-top:9px}
+.entryRow .actions button{min-height:40px;flex:1;border-radius:11px;font:600 12.5px "IBM Plex Sans",sans-serif}
+.miniBtn{border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.45);color:rgba(42,26,16,.85)}
+.miniBtn.rose{border:1px solid rgba(141,63,87,.4);background:rgba(255,255,255,.55);color:var(--accent)}
+.miniBtn.danger{border:1px solid var(--danger-border);background:rgba(255,255,255,.35);color:var(--danger-ink)}
+.miniBtn:disabled{opacity:.4;cursor:default}
+
+.aboutBox{margin:12px;padding:14px 16px;border-radius:22px;font:500 12.5px/1.6 "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.75)}
+.aboutBox a{color:var(--accent)}
+
+/* ---- Calibrate ---- */
+.calHeader{display:flex;align-items:center;gap:10px;padding:8px 14px 0}
+.backBtn{width:44px;height:44px;flex:none;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.4);border-radius:14px;font:600 17px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.calTitle{font:600 20px "IBM Plex Sans",sans-serif;letter-spacing:-.015em;color:var(--ink)}
+.calCard{margin:12px;padding:16px 16px 18px}
+.calCard .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.calCard .top .name{font:600 16px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.calBadge{font:600 10px "IBM Plex Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:6px}
+.calRange{font:500 12.5px "IBM Plex Mono",monospace;color:var(--ink-muted);margin-top:5px}
+.calBody{font:500 12.5px/1.5 "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.82);margin-top:12px}
+.fieldLabel{font:600 12.5px "IBM Plex Sans",sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:6px}
+.field{width:100%;min-height:48px;padding:0 14px;border:1px solid rgba(255,255,255,.95);border-radius:14px;background:rgba(255,255,255,.65);font:600 15px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.fieldGrid{display:flex;gap:10px}
+.fieldGrid>div{flex:1}
+.calActions{display:flex;gap:9px;margin-top:16px}
+.btnGhost{flex:1;min-height:50px;border:1px solid rgba(255,255,255,.95);background:rgba(255,255,255,.5);border-radius:16px;font:600 13.5px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.82)}
+.btnPrimary{flex:1.4;min-height:50px;border:0;background:var(--accent);color:var(--on-accent);border-radius:16px;font:600 13.5px "IBM Plex Sans",sans-serif;box-shadow:0 8px 20px rgba(141,63,87,.28)}
+.footnote{margin:12px;padding:14px 16px;border-radius:22px;background:rgba(255,255,255,.28);border:1px solid rgba(255,255,255,.85);font:500 12.5px/1.5 "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.82)}
+.linkBtn{border:0;background:none;color:var(--accent);font:600 12.5px "IBM Plex Sans",sans-serif;padding:0;margin-top:8px}
+
+/* ---- tab bar ---- */
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));width:calc(100% - 92px);max-width:388px;z-index:30}
+.tabbarInner{position:relative;display:flex;border-radius:999px;background:rgba(255,255,255,.34);backdrop-filter:blur(40px) saturate(210%);-webkit-backdrop-filter:blur(40px) saturate(210%);border:1px solid rgba(255,255,255,.9);box-shadow:0 14px 34px rgba(120,70,90,.18),inset 0 1px 0 rgba(255,255,255,1);padding:4px}
+.tabbarInd{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:rgba(42,26,16,.9);box-shadow:0 4px 14px rgba(42,26,16,.28);transition:transform .46s cubic-bezier(.19,.9,.24,1);pointer-events:none}
+.tabbarInner button{position:relative;flex:1;min-height:46px;border:0;border-radius:999px;background:none;color:var(--ink-muted);font:600 13px "IBM Plex Sans",sans-serif;transition:color .3s ease}
+.tabbarInner button.on{color:var(--on-accent)}
+
+/* ---- toast ---- */
+.toastWrap{position:fixed;left:0;right:0;bottom:calc(92px + env(safe-area-inset-bottom));display:flex;justify-content:center;pointer-events:none;z-index:40}
+.toastWrap .bubble{animation:gPop .32s cubic-bezier(.22,1,.36,1);padding:10px 18px;border-radius:999px;background:rgba(42,26,16,.92);color:#fff6ea;font:600 12.5px "IBM Plex Sans",sans-serif;box-shadow:0 10px 26px rgba(60,30,40,.3)}
+
+/* ---- sheets ---- */
+.scrim{position:fixed;inset:0;background:rgba(60,30,40,.28);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:none;align-items:flex-end;justify-content:center;animation:gFade .24s ease;z-index:50}
+.scrim.open{display:flex}
+.sheet{animation:gSheet .46s cubic-bezier(.19,.9,.24,1);width:100%;max-width:480px;max-height:86vh;overflow-y:auto;padding:18px 16px calc(26px + env(safe-area-inset-bottom));border-radius:34px 34px 0 0;background:rgba(255,255,255,.7);backdrop-filter:blur(48px) saturate(200%);-webkit-backdrop-filter:blur(48px) saturate(200%);border-top:1px solid rgba(255,255,255,1);box-shadow:0 -18px 50px rgba(96,50,70,.22)}
+.sheetGrip{width:38px;height:4px;border-radius:2px;background:rgba(42,26,16,.25);margin:0 auto 14px}
+.sheetHead{display:flex;align-items:center;justify-content:space-between}
+.sheetHead .t{font:600 18px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.sheetClose{width:44px;height:44px;border:0;background:none;font:600 19px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.7)}
+.sheet .fieldLabel{margin-top:16px}
+.sheet .fieldLabel:first-of-type{margin-top:14px}
+.typeGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.typeBtn{min-height:52px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.5);color:var(--ink);border-radius:16px;font:600 12.5px "IBM Plex Sans",sans-serif;line-height:1.3;padding:8px}
+.typeBtn.on{background:rgba(42,26,16,.9);color:var(--on-accent)}
+.typeBtn small{display:block;font-weight:500;font-size:12.5px;opacity:.75;margin-top:2px}
+.optionalNote{margin-top:18px;padding:14px;border-radius:20px;background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.9)}
+.optionalNote .t{font:600 13px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.optionalNote .t span{font-weight:500;color:var(--ink-muted)}
+.optionalNote .b{font:500 12.5px/1.5 "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.82);margin-top:5px}
+.sheetErr{color:var(--danger-ink);font:500 12.5px "IBM Plex Sans",sans-serif;margin-top:8px;min-height:1em}
+.sheetPrimary{width:100%;min-height:52px;margin-top:16px;border:0;background:var(--accent);color:var(--on-accent);border-radius:16px;font:600 14px "IBM Plex Sans",sans-serif;box-shadow:0 8px 20px rgba(141,63,87,.3)}
+.methodSheetList{display:grid;gap:8px;margin-top:12px}
+.methodSheetRow{display:flex;align-items:center;justify-content:space-between;min-height:54px;padding:0 16px;border-radius:18px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.5);color:var(--ink);font:600 14px "IBM Plex Sans",sans-serif}
+.methodSheetRow.on{background:rgba(42,26,16,.9);color:var(--on-accent);border-color:rgba(42,26,16,.9)}
+.methodSheetRow .b2{font:500 12.5px "IBM Plex Mono",monospace}
+.anchorRow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin:8px 0}
+.anchorRow input{min-height:44px;padding:0 10px;border:1px solid rgba(255,255,255,.95);border-radius:12px;background:rgba(255,255,255,.65);font:600 13px "IBM Plex Sans",sans-serif;color:var(--ink)}
+.anchorRow .x{width:36px;height:36px;border:0;background:none;font:600 16px sans-serif;color:rgba(42,26,16,.6)}
+
+/* ---- kitchen ---- */
+.kitchen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;
+  background:radial-gradient(105% 66% at 86% -6%,#ffd3de 0%,rgba(255,211,222,0) 62%),radial-gradient(125% 72% at 8% 106%,#cfe3d3 0%,rgba(207,227,211,0) 66%),linear-gradient(#fffcfb,#f6f0ef);
+  transform-origin:50% 62%}
+.kitchen.open{display:flex}
+.kitchen.enter{animation:gZoomIn .36s cubic-bezier(.22,1,.36,1)}
+.kitchen.leave{animation:gZoomOut .26s ease forwards}
+.kReadout{margin:calc(12px + env(safe-area-inset-top)) 12px 0;padding:20px 18px 22px;border-radius:34px;background:rgba(255,255,255,.34);backdrop-filter:blur(44px) saturate(210%);-webkit-backdrop-filter:blur(44px) saturate(210%);border:1px solid rgba(255,255,255,.9);box-shadow:0 22px 54px rgba(120,70,90,.18),inset 0 1px 0 rgba(255,255,255,1);text-align:center}
+.kReadout .name{font:600 13px "IBM Plex Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:rgba(42,26,16,.8)}
+.kReadout .val{font:700 104px/.9 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.055em;color:var(--ink);margin-top:12px}
+.kReadout .sub{font:600 17px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.8);margin-top:10px}
+.dial{position:relative;width:252px;height:252px;margin:20px auto 0;border-radius:50%;background:rgba(255,255,255,.34);backdrop-filter:blur(40px) saturate(200%);-webkit-backdrop-filter:blur(40px) saturate(200%);border:1px solid rgba(255,255,255,.95);box-shadow:0 18px 44px rgba(120,70,90,.18),inset 0 2px 1px rgba(255,255,255,1),inset 0 -10px 24px rgba(255,255,255,.4);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.dial .tick{position:absolute;left:50%;top:50%;border-radius:1px}
+.dial .pip{position:absolute;left:50%;top:50%;width:16px;height:16px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(255,255,255,.85),0 4px 10px rgba(141,63,87,.4)}
+.dial .hub{position:absolute;inset:44px;border-radius:50%;background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 2px 6px rgba(120,70,90,.08)}
+.dial .hub .v{font:600 52px/1 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--ink)}
+.dial .hub .u{font:600 11.5px "IBM Plex Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:rgba(42,26,16,.78);margin-top:6px}
+.dial .hub .s{font:500 12.5px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.78);margin-top:2px}
+.kCaption{font:500 12.5px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.78);text-align:center;margin-top:10px}
+.kSteppers{display:flex;gap:12px;padding:12px 14px 0}
+.kStepBtn{flex:1;min-height:70px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.32);backdrop-filter:blur(38px) saturate(200%);-webkit-backdrop-filter:blur(38px) saturate(200%);border-radius:24px;font:600 32px "IBM Plex Sans",sans-serif;color:var(--ink);box-shadow:0 14px 32px rgba(120,70,90,.16),inset 0 1px 0 rgba(255,255,255,1);user-select:none;-webkit-user-select:none}
+.kStepBtn.active{background:var(--ink);color:#fff6ea}
+.kExit{width:100%;min-height:52px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.3);backdrop-filter:blur(34px) saturate(190%);-webkit-backdrop-filter:blur(34px) saturate(190%);border-radius:20px;font:600 14px "IBM Plex Sans",sans-serif;color:rgba(42,26,16,.82)}
+.kFoot{padding:12px 14px calc(20px + env(safe-area-inset-bottom));margin-top:auto}
+
+#installWrap{padding:0 12px}
+#installRow{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0;padding:12px 14px;border-radius:18px}
+#installRow.show{display:flex}
+#installRow #installMsg{flex:1;min-width:180px;color:var(--ink-muted);font-size:12.5px}
+#installRow .btn{white-space:nowrap;min-height:40px;padding:0 14px;border:0;background:var(--accent);color:var(--on-accent);border-radius:12px;font:600 12.5px "IBM Plex Sans",sans-serif}
 .hidden{display:none!important}
-.example{font-size:.82rem;color:var(--muted)}
-.anchorRow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin:6px 0}
-.anchorRow input{min-height:38px;padding:8px}
 </style>
 </head>
 <body>
-<header class="app">
-  <div class="logo"><i class="dot" aria-hidden="true"></i>Grist</div>
-  <div class="tag">grind size converter · microns as the common currency</div>
-  <div class="themeSet" role="group" aria-label="Colour theme">
-    <button type="button" data-theme-set="system">Auto</button>
-    <button type="button" data-theme-set="light">Light</button>
-    <button type="button" data-theme-set="dark">Dark</button>
+
+<div class="app" id="app">
+  <div class="mist mist1"></div><div class="mist mist2"></div><div class="mist mist3"></div>
+
+  <div class="screenTabs" id="screenTabs">
+    <button type="button" class="screenTab" id="tabConvertBtn">Convert</button>
+    <button type="button" class="screenTab" id="tabGuideBtn">Start here</button>
+    <button type="button" class="kitchenBtn" id="kitchenOpenBtn">Kitchen view</button>
   </div>
-</header>
 
-<div class="wrap">
+  <main id="mainScroll">
 
-<!-- ============ CONVERT ============ -->
-<section class="tab active" id="tab-convert" role="tabpanel">
-  <div class="card">
-    <div id="firstRunHint" class="example" style="margin-bottom:10px"></div>
-    <label for="srcG">From grinder</label>
-    <select id="srcG"></select>
-    <div id="srcMeta" class="small muted" style="margin:4px 0 8px"></div>
-    <label for="srcSet" id="srcSetLabel">Setting</label>
-    <div class="setting">
-      <button class="stepbtn" id="srcMinus" aria-label="one detent finer" type="button">−</button>
-      <input id="srcSet" type="text" inputmode="decimal" autocomplete="off" spellcheck="false">
-      <button class="stepbtn" id="srcPlus" aria-label="one detent coarser" type="button">+</button>
+    <!-- ============ CONVERT ============ -->
+    <section class="screen" id="screenConvert">
+      <div class="resultCard glass" id="resultCard">
+        <div class="sweep" id="sweep"></div>
+        <div class="pairRow">
+          <select id="srcSel" aria-label="Source grinder"></select>
+          <button type="button" class="swapBtn" id="swapBtn" aria-label="Swap grinders">⇄</button>
+          <select id="tgtSel" class="tgt" aria-label="Target grinder"></select>
+        </div>
+        <div class="outRow">
+          <span class="outValue mono" id="outValue">—</span>
+          <span class="outTol mono" id="outTol"></span>
+        </div>
+        <div class="outUnit" id="outUnit"></div>
+        <div class="miniScale" id="miniScale">
+          <div class="track"></div>
+          <div class="band" id="scaleBand"></div>
+          <div class="marker" id="scaleMarker"></div>
+        </div>
+        <div class="stateChip" id="stateChip"><span class="dot"></span><span id="stateChipText"></span></div>
+      </div>
+
+      <div class="clampBanner hidden" id="clampBanner"></div>
+
+      <button type="button" class="methodRow glass2" id="methodRowBtn">
+        <span id="methodRowName"></span>
+        <span class="band mono" id="methodRowBand">— <span style="font-size:11px">▾</span></span>
+      </button>
+
+      <div class="settingCard glass2" id="settingCard">
+        <div class="settingRow">
+          <button type="button" class="stepBtn" id="decBtn" aria-label="Finer">−</button>
+          <div class="settingMid">
+            <div class="settingValue mono" id="settingValue"></div>
+            <div class="settingUnit" id="settingUnit"></div>
+          </div>
+          <button type="button" class="stepBtn" id="incBtn" aria-label="Coarser">+</button>
+        </div>
+        <input type="range" id="settingRange" aria-label="Grind setting">
+      </div>
+
+      <button type="button" class="saveDialinBtn" id="openSaveSheetBtn">Save dial-in</button>
+    </section>
+
+    <!-- ============ START HERE (guide) ============ -->
+    <section class="screen" id="screenGuide">
+      <div style="padding:14px 20px 0">
+        <div class="eyebrow">Brewing</div>
+        <div class="guideTitle" id="guideTitle"></div>
+      </div>
+      <div style="padding:14px 12px 0">
+        <div class="catSeg" id="guideCatSeg"></div>
+        <div class="methodChips" id="guideMethodChips"></div>
+      </div>
+      <div class="recCard glass" id="recCard">
+        <div class="eyebrow">Start here</div>
+        <div class="recRow">
+          <span class="lohi mono" id="recLo"></span>
+          <span class="dash">–</span>
+          <span class="lohi mono" id="recHi"></span>
+        </div>
+        <div class="recSub" id="recSub"></div>
+        <button type="button" class="useMidBtn" id="useMidBtn"></button>
+      </div>
+      <div class="tasteCard glass2">
+        <div class="tasteTitle" id="tasteTitle"></div>
+        <div class="tasteRow">
+          <button type="button" class="tasteBtn" id="sourBtn">Sour<small>go finer</small></button>
+          <button type="button" class="tasteBtn" id="bitterBtn">Bitter<small>go coarser</small></button>
+        </div>
+        <div class="adviceText" id="adviceText">One variable at a time — grind, dose, or ratio. Then taste again.</div>
+      </div>
+    </section>
+
+    <!-- ============ LIBRARY ============ -->
+    <section class="screen" id="screenLibrary">
+      <div class="libTitle"><div class="h">Library</div></div>
+      <div class="libSeg" id="libSeg">
+        <button type="button" data-libtab="setups">Dial-ins</button>
+        <button type="button" data-libtab="grinders">Grinders</button>
+        <button type="button" data-libtab="brewers">Brewers</button>
+      </div>
+
+      <div class="libPanel glass" id="panelSetups">
+        <div id="setupsEmpty" class="emptyState hidden">
+          <div class="emptyDots"><span style="width:5px;height:5px"></span><span style="width:8px;height:8px"></span><span style="width:13px;height:13px;background:rgba(42,26,16,.5)"></span><span style="width:19px;height:19px;background:rgba(42,26,16,.7)"></span></div>
+          <div class="emptyTitle">No dial-ins saved yet</div>
+          <div class="emptyBody">When a brew tastes right, hit <b>Save dial-in</b> on the Convert screen and it lands here.</div>
+          <button type="button" class="emptyCta" id="setupsGoConvert">Go to Convert</button>
+        </div>
+        <div class="rowList" id="setupsList"></div>
+        <div class="hint" id="setupsHint">Tap a setup to load it into Convert.</div>
+      </div>
+
+      <div class="libPanel glass" id="panelGrinders">
+        <div class="head"><div class="label">My grinders</div><button type="button" class="addPill" id="addGrinderBtn">+ Add</button></div>
+        <div class="rowList" id="grindersList"></div>
+        <div class="hint">Tap a grinder to make it your source.</div>
+      </div>
+
+      <div class="libPanel glass" id="panelBrewers">
+        <div class="head"><div class="label">My brewers</div><button type="button" class="addPill" id="addBrewerBtn">+ Add</button></div>
+        <div class="rowList" id="brewersList"></div>
+        <div class="hint">Tap a brewer to set it as your target method.</div>
+      </div>
+
+      <div class="libPanel glass2" id="panelBackup">
+        <div class="head"><div class="label">Backup</div></div>
+        <div class="backupRow">
+          <button type="button" class="miniBtn" id="exportBtn">Export a copy</button>
+          <button type="button" class="miniBtn" id="importBtn">Restore from file</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <div class="hint">Your grinders, calibrations and dial-ins live only in this browser. Export a copy before you clear site data or move to another device.</div>
+      </div>
+
+      <div class="aboutBox glass2" id="aboutBox"></div>
+    </section>
+
+    <!-- ============ CALIBRATE ============ -->
+    <section class="screen" id="screenCalibrate">
+      <div class="calHeader">
+        <button type="button" class="backBtn" id="calBackBtn" aria-label="Back">‹</button>
+        <div class="calTitle">Calibrate</div>
+      </div>
+      <div class="calCard glass">
+        <div class="top">
+          <div class="name" id="calName"></div>
+          <div class="calBadge" id="calBadgeEl"></div>
+        </div>
+        <div class="calRange mono" id="calRangeEl"></div>
+        <div class="calBody">Grind a known dose at each end of the range and measure it, or copy figures from a sieve test you trust. Two anchors is all the model needs — everything between is interpolated.</div>
+      </div>
+      <div class="calCard glass">
+        <div class="fieldLabel">Microns at the finest setting</div>
+        <input type="text" inputmode="decimal" id="calLoField" class="field" aria-label="Microns at finest setting">
+        <div class="fieldLabel" style="margin-top:14px">Microns at the coarsest setting</div>
+        <input type="text" inputmode="decimal" id="calHiField" class="field" aria-label="Microns at coarsest setting">
+        <div class="sheetErr" id="calErr"></div>
+        <div class="calActions">
+          <button type="button" class="btnGhost" id="calCancelBtn">Cancel</button>
+          <button type="button" class="btnPrimary" id="calSaveBtn">Save anchors</button>
+        </div>
+        <button type="button" class="linkBtn" id="calAdvancedBtn">Edit every anchor (for non-linear grinders) →</button>
+      </div>
+      <div class="footnote">Calibrating changes every conversion involving this grinder, and marks it <b>measured</b> so you know which numbers to trust.</div>
+    </section>
+
+  </main>
+
+  <div class="tabbar">
+    <div class="tabbarInner">
+      <div class="tabbarInd" id="tabbarInd"></div>
+      <button type="button" id="goBrewBtn">Brew</button>
+      <button type="button" id="goLibraryBtn">Library</button>
     </div>
-    <div class="sliderRow" id="srcSliderRow">
-      <input id="srcRange" type="range" aria-label="Grind setting">
-      <div class="sliderEnds"><span id="srcRangeLo"></span><span id="srcRangeHi"></span></div>
+  </div>
+
+  <div class="toastWrap hidden" id="toastWrap"><div class="bubble" id="toastBubble"></div></div>
+
+  <!-- ---- Method sheet ---- -->
+  <div class="scrim" id="methodSheetScrim">
+    <div class="sheet">
+      <div class="sheetGrip"></div>
+      <div class="sheetHead"><div class="t">Brew method</div><button type="button" class="sheetClose" data-close-sheet="methodSheetScrim" aria-label="Close">×</button></div>
+      <div class="catSeg" id="methodSheetCatSeg" style="margin-top:6px"></div>
+      <div class="methodSheetList" id="methodSheetList"></div>
     </div>
-    <div class="err" id="srcErr"></div>
-
-    <div class="swap"><button class="swapbtn" id="swapBtn" type="button">⇅ swap</button></div>
-
-    <label for="tgtG">To grinder</label>
-    <select id="tgtG"></select>
-    <div id="tgtMeta" class="small muted" style="margin:4px 0 8px"></div>
-
-    <div class="result" id="convResult"></div>
-    <div id="convWarn"></div>
   </div>
 
-  <div class="card tight">
-    <label style="display:flex;justify-content:space-between;align-items:center">
-      <span>Micron scale</span>
-      <button class="btn ghost small" id="favHint" type="button" style="min-height:0;padding:4px 8px;text-transform:none;letter-spacing:0">★ favorites</button>
-    </label>
-    <div class="scaleWrap"><div id="scale"></div></div>
-    <div class="tiny muted" style="margin-top:6px">Top rows = brew-method micron targets, highlighted when your current setting falls inside. Lower bars = each grinder's full range, with a dot at its equivalent setting. Dashed line = current particle size.</div>
-  </div>
-
-  <div class="disclaimer" id="mainDisclaimer"></div>
-</section>
-
-<!-- ============ TARGETS ============ -->
-<section class="tab" id="tab-targets" role="tabpanel">
-  <div class="card">
-    <h2>Brew-method targets</h2>
-    <label for="tgtMethodG">Grinder</label>
-    <select id="tgtMethodG"></select>
-    <label style="margin-top:10px">Brew method</label>
-    <div class="pills" id="methodPills"></div>
-    <div class="result" id="methodResult" style="margin-top:12px"></div>
-    <div class="btnrow"><button class="btn primary" id="sendToConv" type="button">Send midpoint to converter →</button></div>
-  </div>
-
-  <div class="card">
-    <h2>Multi-target <span class="badge est">all favorites</span></h2>
-    <p class="small muted">Enter a setting once, see it on every favorite grinder — the “I’m at a friend’s place” view.</p>
-    <div class="row">
-      <div><label for="mtG">Grinder</label><select id="mtG"></select></div>
-      <div><label for="mtSet">Setting</label><input id="mtSet" type="text" inputmode="decimal" autocomplete="off"></div>
+  <!-- ---- Save dial-in sheet ---- -->
+  <div class="scrim" id="saveSheetScrim">
+    <div class="sheet">
+      <div class="sheetGrip"></div>
+      <div class="sheetHead"><div class="t">Save this dial-in</div></div>
+      <div id="saveSheetSub" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ink-muted);margin-top:5px"></div>
+      <input type="text" id="saveNameField" class="field" style="margin-top:14px;min-height:50px;border-radius:16px" placeholder="Name this setup" aria-label="Name">
+      <div class="calActions">
+        <button type="button" class="btnGhost" data-close-sheet="saveSheetScrim">Cancel</button>
+        <button type="button" class="btnPrimary" id="confirmSaveBtn">Save</button>
+      </div>
     </div>
-    <div class="err" id="mtErr"></div>
-    <ul class="list" id="mtList"></ul>
-    <p class="tiny muted">Star grinders on the <b>My grinders</b> tab to show them here.</p>
   </div>
-</section>
 
-<!-- ============ DIAL IN ============ -->
-<section class="tab" id="tab-dialin" role="tabpanel">
-  <div class="card">
-    <h2>Dial-in helper</h2>
-    <label for="diG">Grinder</label>
-    <select id="diG"></select>
-    <label for="diSet" style="margin-top:10px">Current setting</label>
-    <input id="diSet" type="text" inputmode="decimal" autocomplete="off">
-    <div class="err" id="diErr"></div>
-    <label style="margin-top:10px">Brew method</label>
-    <div class="pills" id="diMethodPills"></div>
-    <label style="margin-top:12px">Taste problem</label>
-    <div class="seg" id="diTaste">
-      <button data-t="sour" aria-pressed="true" type="button">Sour / weak</button>
-      <button data-t="bitter" aria-pressed="false" type="button">Bitter / harsh</button>
+  <!-- ---- Add/Edit grinder sheet ---- -->
+  <div class="scrim" id="addSheetScrim">
+    <div class="sheet">
+      <div class="sheetGrip"></div>
+      <div class="sheetHead"><div class="t" id="addSheetTitle">Add a grinder</div><button type="button" class="sheetClose" data-close-sheet="addSheetScrim" aria-label="Close">×</button></div>
+
+      <div class="fieldLabel">Name</div>
+      <input type="text" id="draftName" class="field" placeholder="e.g. Kinu M47" aria-label="Grinder name">
+
+      <div class="fieldLabel" id="draftTypeLabel">How does it adjust?</div>
+      <div class="typeGrid" id="draftTypeGrid"></div>
+      <div id="draftTypeLocked" class="hint hidden" style="text-align:left;margin-top:6px"></div>
+
+      <div id="draftSchemeFields"></div>
+
+      <div class="optionalNote">
+        <div class="t">Micron anchors <span>— optional</span></div>
+        <div class="b">Leave blank and Grist borrows a similar curve, flagged as an estimate. You can calibrate later.</div>
+        <div class="fieldGrid" style="margin-top:12px">
+          <div><div class="fieldLabel">µm at finest</div><input type="text" inputmode="decimal" id="draftLo" class="field" placeholder="200"></div>
+          <div><div class="fieldLabel">µm at coarsest</div><input type="text" inputmode="decimal" id="draftHi" class="field" placeholder="1200"></div>
+        </div>
+      </div>
+      <div class="sheetErr" id="addSheetErr"></div>
+      <button type="button" class="sheetPrimary" id="addSheetSaveBtn">Add — borrow anchors for now</button>
     </div>
-    <div class="result" id="diResult" style="margin-top:12px"></div>
-    <div class="disclaimer">Change <b>one variable at a time</b> — grind, dose, or ratio — then taste again before the next tweak.</div>
   </div>
-</section>
 
-<!-- ============ MY GRINDERS ============ -->
-<section class="tab" id="tab-grinders" role="tabpanel">
-  <div class="card">
-    <h2 style="display:flex;justify-content:space-between;align-items:center">
-      My grinders <button class="btn primary" id="addGrinder" type="button" style="min-height:0;padding:8px 12px">+ Add</button>
-    </h2>
-    <p class="small muted">Star to favorite (multi-target + scale). Edit calibration anchors to correct any grinder — published micron data is approximate.</p>
-    <ul class="list" id="grinderList"></ul>
-  </div>
-</section>
-
-<!-- ============ SETUPS ============ -->
-<section class="tab" id="tab-setups" role="tabpanel">
-  <div class="card">
-    <h2 style="display:flex;justify-content:space-between;align-items:center">
-      Saved setups <button class="btn primary" id="addSetup" type="button" style="min-height:0;padding:8px 12px">+ Save</button>
-    </h2>
-    <p class="small muted">Named recipes: grinder + setting + method + dose/ratio + notes.</p>
-    <ul class="list" id="setupList"></ul>
-  </div>
-  <div class="card">
-    <h2>Data management</h2>
-    <p class="small muted">Everything lives in your browser (localStorage). Back up or move it as a JSON file.</p>
-    <div class="btnrow">
-      <button class="btn" id="exportBtn" type="button">⬇ Export JSON</button>
-      <button class="btn" id="importBtn" type="button">⬆ Import JSON</button>
-      <button class="btn danger" id="wipeBtn" type="button">Wipe all data</button>
+  <!-- ---- Advanced multi-anchor sheet ---- -->
+  <div class="scrim" id="anchorSheetScrim">
+    <div class="sheet">
+      <div class="sheetGrip"></div>
+      <div class="sheetHead"><div class="t" id="anchorSheetTitle">Calibrate</div><button type="button" class="sheetClose" data-close-sheet="anchorSheetScrim" aria-label="Close">×</button></div>
+      <div class="hint" style="text-align:left;margin-top:2px">Map settings (native notation) to median particle size (µm). Piecewise-linear between anchors — add more for non-linear grinders. Min 2.</div>
+      <div id="anchorRows" style="margin-top:8px"></div>
+      <button type="button" class="btnGhost" id="addAnchorRowBtn" style="width:100%;margin-top:6px">+ Add anchor</button>
+      <div class="sheetErr" id="anchorSheetErr"></div>
+      <button type="button" class="sheetPrimary" id="saveAnchorsBtn">Save calibration</button>
     </div>
-    <input type="file" id="importFile" accept="application/json,.json" class="hidden">
   </div>
-</section>
 
-</div><!-- /wrap -->
-
-<nav class="tabs" role="tablist">
-  <button role="tab" data-tab="convert" aria-selected="true"><span class="ic">⇄</span>Convert</button>
-  <button role="tab" data-tab="targets" aria-selected="false"><span class="ic">◎</span>Targets</button>
-  <button role="tab" data-tab="dialin" aria-selected="false"><span class="ic">⚖</span>Dial in</button>
-  <button role="tab" data-tab="grinders" aria-selected="false"><span class="ic">⚙</span>Grinders</button>
-  <button role="tab" data-tab="setups" aria-selected="false"><span class="ic">☰</span>Setups</button>
-</nav>
-
-<div class="wrap" id="installWrap" style="padding-bottom:0">
-  <div class="card tight hidden" id="installRow">
-    <div class="small" id="installMsg"></div>
-    <button class="btn primary hidden" id="installBtn" type="button">Install Grist</button>
+  <!-- ---- Brewer sheet ---- -->
+  <div class="scrim" id="brewerSheetScrim">
+    <div class="sheet">
+      <div class="sheetGrip"></div>
+      <div class="sheetHead"><div class="t" id="brewerSheetTitle">Add a brewer</div><button type="button" class="sheetClose" data-close-sheet="brewerSheetScrim" aria-label="Close">×</button></div>
+      <div class="fieldLabel">Name</div>
+      <input type="text" id="bDraftName" class="field" placeholder="e.g. Tricolate" aria-label="Brewer name">
+      <div class="fieldLabel">Family</div>
+      <div class="typeGrid" id="bDraftCatGrid" style="grid-template-columns:1fr 1fr 1fr"></div>
+      <div class="fieldLabel">Target grind window</div>
+      <div class="fieldGrid">
+        <div><input type="text" inputmode="decimal" id="bDraftLo" class="field" placeholder="600 µm" aria-label="Finest microns"></div>
+        <div><input type="text" inputmode="decimal" id="bDraftHi" class="field" placeholder="800 µm" aria-label="Coarsest microns"></div>
+      </div>
+      <div style="font:500 12.5px/1.5 'IBM Plex Sans',sans-serif;color:rgba(42,26,16,.82);margin-top:8px">The window Grist highlights on the scale and checks your setting against. Narrow it as you learn the brewer.</div>
+      <div class="sheetErr" id="brewerSheetErr"></div>
+      <button type="button" class="sheetPrimary" id="brewerSaveBtn">Save brewer</button>
+    </div>
   </div>
-</div>
-<footer class="app" id="appFooter"></footer>
 
-<!-- generic modal -->
-<div class="modal-bg" id="modalBg">
-  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+  <!-- ---- Kitchen takeover ---- -->
+  <div class="kitchen" id="kitchen">
+    <div class="kReadout">
+      <div class="name" id="kName"></div>
+      <div class="val mono" id="kVal"></div>
+      <div class="sub" id="kSub"></div>
+    </div>
+    <div class="dial" id="dial">
+      <div id="dialTicks"></div>
+      <div class="pip" id="dialPip"></div>
+      <div class="hub">
+        <div class="v mono" id="kHubVal"></div>
+        <div class="u" id="kHubUnit"></div>
+        <div class="s" id="kHubShort"></div>
+      </div>
+    </div>
+    <div class="kCaption">Turn the dial, or tap ± for one detent</div>
+    <div class="kSteppers">
+      <button type="button" class="kStepBtn" id="kDecBtn" aria-label="Finer">−</button>
+      <button type="button" class="kStepBtn" id="kIncBtn" aria-label="Coarser">+</button>
+    </div>
+    <div class="kFoot"><button type="button" class="kExit" id="kExitBtn">Exit kitchen view</button></div>
+  </div>
+
+  <div id="installWrap">
+    <div id="installRow" class="glass2">
+      <div id="installMsg"></div>
+      <!-- starts hidden: only a real beforeinstallprompt can make it work, and
+           iOS never fires one, so an always-visible button would be a dead control -->
+      <button class="btn hidden" id="installBtn" type="button">Install Grist</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -319,22 +596,28 @@ footer.app a{color:var(--accent)}
    Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v1.4.1";
+const APP_VERSION = "v2.0.0";
 const SCHEMA_VERSION = 1;
 const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
 /* -------- brew-method global micron targets (§5) -------- */
 const DEFAULT_METHODS = [
-  {name:"Turkish",      min:40,  max:220},
-  {name:"Espresso",     min:180, max:380},
-  {name:"Moka pot",     min:360, max:660},
-  {name:"AeroPress",    min:480, max:800},
-  {name:"Pour over / V60", min:400, max:950},
-  {name:"Drip machine", min:500, max:900},
-  {name:"Chemex",       min:600, max:900},
-  {name:"Cupping",      min:600, max:800},
-  {name:"French press", min:690, max:1300},
-  {name:"Cold brew",    min:900, max:1500},
+  {name:"Turkish",                       min:40,  max:220,  family:"other",
+   note:"Powder-fine. Below what most grinders — and phone grind-analysis apps — can resolve."},
+  {name:"Espresso",                      min:200, max:400,  family:"other",
+   note:"Dialled by shot time, not microns. Fines content matters more here than the median."},
+  {name:"Moka pot",                      min:350, max:650,  family:"other",
+   note:"Sources split on this one; sensitive to fines stalling the bed."},
+  {name:"AeroPress",                     min:350, max:900,  family:"immersion",
+   note:"Really two methods: short pressure recipes want the fine end, long immersion the coarse end."},
+  {name:"Pour over (V60, Chemex, drip)", min:500, max:900,  family:"pour",
+   note:"V60, Chemex and flat-bottom drip differ by less than the disagreement between sources, so they share one window. Chemex's thicker filter — grind a touch coarser."},
+  {name:"French press",                  min:800, max:1200, family:"immersion",
+   note:"Published windows span 690–2000. Immersion is forgiving; precision here is unwarranted."},
+  {name:"Cold brew",                     min:900, max:1500, family:"immersion",
+   note:"Long steep makes exact size nearly irrelevant across a wide band."},
+  {name:"Cupping (SCA)",                 min:800, max:1100, family:"immersion",
+   note:"The only window here with a published standard: SCA protocol specifies 70–75% passing an 850 µm sieve. That is a sieve fraction, so the micron equivalent is approximate."},
 ];
 
 /* -------- seed grinder database (§4) --------
@@ -344,98 +627,98 @@ const SEED_GRINDERS = [
   {id:"ode2", name:"Fellow Ode Gen 2", confidence:"verified",
    scheme:{type:"numbered-substeps", firstMain:1, lastMain:11, subs:2},
    anchors:[["1",275],["11",1160]],
-   brewRanges:{Espresso:["1","2"],AeroPress:["1.2","8.2"],"Pour over / V60":["2.2","5.2"],"Drip machine":["1.1","8"],"French press":["6","11"],"Cold brew":["7","11"]},
-   notes:"Filter-focused; espresso not recommended. Verified against honestcoffeeguide.com."},
+   brewRanges:{Espresso:["1","2"],AeroPress:["1.2","8.2"],"Pour over (V60, Chemex, drip)":["2.2","8.1"],"French press":["6","11"],"Cold brew":["7","11"]},
+   notes:"31 positions: two sub-marks between each main number, 1 through 11, with no sub-marks after 11 — confirmed against a physical dial, so 1.3 is not a real setting. Filter-focused; espresso not recommended. Endpoints verified against honestcoffeeguide.com; µm per step is close to constant across the filter range, so two anchors are enough."},
 
-  {id:"opus", name:"Fellow Opus", confidence:"verified",
+  {id:"opus", name:"Fellow Opus (Gen 1)", confidence:"verified",
    scheme:{type:"numbered-substeps", firstMain:1, lastMain:11, subs:3},
    anchors:[["1",230],["11",1160]],
-   brewRanges:{Espresso:["1","2.5"],AeroPress:["2","8.75"],"Pour over / V60":["3","6"],"Drip machine":["2","8"],"French press":["6","11"],"Cold brew":["7.25","11"]},
-   notes:"Dual macro/micro mechanism at the fine end — add anchors there for accuracy."},
+   brewRanges:{Espresso:["1","2.5"],AeroPress:["2","8.75"],"Pour over (V60, Chemex, drip)":["3","8.5"],"French press":["6","11"],"Cold brew":["7.25","11"]},
+   notes:"41 quarter-step positions. The outer dial is close to linear (~23 µm/step). Fellow Opus 2 is a DIFFERENT grinder — stepless, 48 mm burrs — so this entry does not apply to it. The Opus has a hidden inner calibration ring under the hopper, so two units at the same dial number can differ; recalibrate if yours reads off."},
 
   {id:"xbloom", name:"xBloom Studio", confidence:"verified",
-   scheme:{type:"simple-steps", min:0, max:80},
-   anchors:[["0",180],["80",1050]],
-   brewRanges:{Espresso:["0","18"],AeroPress:["13","71"],"Pour over / V60":["21","47"],"Drip machine":["12","66"],"French press":["47","80"],"Cold brew":["58","80"]},
-   notes:""},
+   scheme:{type:"simple-steps", min:1, max:80},
+   anchors:[["1",180],["80",1050]],
+   brewRanges:{Espresso:["1","18"],AeroPress:["13","71"],"Pour over (V60, Chemex, drip)":["21","68"],"French press":["47","80"],"Cold brew":["58","80"]},
+   notes:"Dial is 1–80. The quoted 18.75 µm/step is burr-gap movement; real particle change is nearer 11 µm/step, which is what these endpoints encode."},
 
   {id:"c40", name:"Comandante C40 MK4", confidence:"verified",
    scheme:{type:"clicks", min:0, max:40},
    anchors:[["0",0],["40",1090]],
-   brewRanges:{Espresso:["7","13"],AeroPress:["12","35"],"Pour over / V60":["15","25"],"Drip machine":["12","33"],"French press":["26","40"],"Cold brew":["30","40"]},
-   notes:"Hand grinder — zero point (burrs touching) varies unit to unit; recalibrate the 0-click anchor to your grinder."},
+   brewRanges:{Espresso:["7","13"],AeroPress:["12","35"],"Pour over (V60, Chemex, drip)":["15","34"],"French press":["26","40"],"Cold brew":["30","40"]},
+   notes:"Hand grinder — zero point (burrs touching) varies unit to unit and drifts with burr wear, so absolute microns are softer than an electric grinder's. Recalibrate the 0-click anchor to your grinder."},
 
   {id:"encore-esp", name:"Baratza Encore ESP", confidence:"verified",
    scheme:{type:"simple-steps", min:0, max:40},
-   anchors:[["0",230],["20",480],["40",1380]],
-   brewRanges:{Espresso:["0","13"],AeroPress:["8","30"],"Pour over / V60":["15","25"],"Drip machine":["7","29"],"French press":["25","38"],"Cold brew":["27","40"]},
-   notes:"Two-zone: fine espresso zone ~20µm/click (0–20), coarse ~90µm/click (20–40). Middle anchor is an estimate."},
+   anchors:[["0",230],["20",450],["40",1380]],
+   brewRanges:{Espresso:["0","13"],AeroPress:["8","30"],"Pour over (V60, Chemex, drip)":["15","30"],"French press":["25","38"],"Cold brew":["27","40"]},
+   notes:"Genuinely two-zone: a fine espresso zone below setting 20 and a much coarser filter zone above it. The break at 20 is verified; the micron value at the break is an estimate, which is why this grinder carries three anchors instead of two."},
 
   {id:"encore", name:"Baratza Encore", confidence:"estimate",
    scheme:{type:"simple-steps", min:1, max:40},
    anchors:[["1",250],["40",1200]],
    brewRanges:{},
-   notes:"Filter-only grinder (est.)."},
+   notes:"Filter grinder; no reliable evidence of a zoned break, so two anchors. Known to be imprecise at the fine end."},
 
   {id:"c40-redclix", name:"Comandante C40 + Red Clix", confidence:"estimate",
    scheme:{type:"clicks", min:0, max:80},
    anchors:[["0",0],["80",1090]],
    brewRanges:{},
-   notes:"Same micron range as C40 at double click resolution. Hand grinder — zero point varies; recalibrate."},
+   notes:"Red Clix roughly doubles click resolution over the same micron range as the standard C40. Hand grinder — zero point varies; recalibrate."},
 
   {id:"jx-pro", name:"1Zpresso JX-Pro", confidence:"estimate",
    scheme:{type:"rotations-clicks", style:"RNT", numbersPerRotation:10, ticksPerNumber:4, min:0, max:80},
    anchors:[["0.0.0",0],["2.0.0",915]],
-   brewRanges:{Espresso:["0.3.0","0.5.0"],AeroPress:["0.7.0","0.8.0"],"Pour over / V60":["0.8.0","1.0.0"],Chemex:["0.9.0","0.9.2"]},
-   notes:"Hand grinder — zero point varies; recalibrate. R.N.T notation: rotation.number.tick, 40 clicks/rotation."},
+   brewRanges:{Espresso:["0.3.0","0.5.0"],AeroPress:["0.7.0","0.8.0"],"Pour over (V60, Chemex, drip)":["0.8.0","1.0.0"]},
+   notes:"Endpoints from published data; the interior is likely compressed at the fine end (the 12.5 µm/click spec is burr-gap movement, measured particle change is smaller). No trustworthy midpoint measurement exists, so this ships with two anchors rather than an invented curve — calibrate it if you own one. Hand grinder — zero point varies."},
 
   {id:"k-ultra", name:"1Zpresso K-Ultra", confidence:"estimate",
-   scheme:{type:"rotations-clicks", style:"RC", clicksPerRotation:36, min:0, max:144},
-   anchors:[["0.0",0],["4.0",760]],
-   brewRanges:{Espresso:["2.7","2.7"],"Pour over / V60":["7.0","9.5"]},
-   notes:"LOW confidence — sources conflict on clicks/rotation vs µm/click. Recalibrate against your own grinder. Hand grinder — zero point varies."},
+   scheme:{type:"rotations-clicks", style:"RNT", numbersPerRotation:10, ticksPerNumber:10, min:0, max:100},
+   anchors:[["0.0.0",0],["1.0.0",760]],
+   brewRanges:{},
+   notes:"External numbered ring, 100 clicks per rotation, read as rotation.number.tick. The manufacturer's 20 µm/click is burr-gap movement, well above real particle change. Brew-setting recommendations were dropped rather than carried over in the wrong notation. Hand grinder — zero point varies."},
 
   {id:"timemore-c3", name:"Timemore C3", confidence:"estimate",
    scheme:{type:"clicks", min:0, max:36},
    anchors:[["6",250],["30",950]],
-   brewRanges:{Espresso:["7","9"],AeroPress:["11","15"],"Pour over / V60":["13","15"],"French press":["16","36"]},
-   notes:"Avoid < 6 clicks — burr contact. Hand grinder — zero point varies."},
+   brewRanges:{Espresso:["7","9"],AeroPress:["11","15"],"Pour over (V60, Chemex, drip)":["13","15"],"French press":["16","36"]},
+   notes:"Avoid below 6 clicks — burr contact. Note the C3 ESP and C3S Pro have different click counts, so this entry may not match your exact variant. Hand grinder — zero point varies."},
 
   {id:"k6", name:"Kingrinder K6", confidence:"estimate",
    scheme:{type:"rotations-clicks", style:"RC", clicksPerRotation:60, min:0, max:180},
    anchors:[["0.0",0],["3.0",1350]],
    brewRanges:{Espresso:["0.15","0.25"],"French press":["1.50","3.0"]},
-   notes:"≈16 µm/click. R.C notation: rotation.click, 60 clicks/rotation. Hand grinder — zero point varies."},
+   notes:"Rotation.click notation, 60 clicks per rotation. The often-quoted 16 µm/click is burr-gap movement and would imply nearly 2900 µm across the dial — these endpoints encode the real published range instead. Hand grinder — zero point varies."},
 
   {id:"niche", name:"Niche Zero", confidence:"estimate",
    scheme:{type:"stepless", min:0, max:50, precision:1},
-   anchors:[["0",0],["15",300],["50",1400]],
-   brewRanges:{Espresso:["10","20"],AeroPress:["20","28"],"Pour over / V60":["30","40"],"French press":["45","50"]},
-   notes:"Non-linear at the fine (espresso) end — the extra middle anchor captures that."},
+   anchors:[["0",0],["15",200],["30",400],["50",1000]],
+   brewRanges:{Espresso:["15","30"],AeroPress:["30","38"],"Pour over (V60, Chemex, drip)":["33","45"],"French press":["45","50"]},
+   notes:"Genuinely non-linear: shallow at the espresso end (small dial moves change the shot a lot even though microns move little) and steeper toward coarse. Four anchors capture that shape. The marked dial stops at 50; the coarsest immersion brews sit past it in the unmarked zone."},
 
   {id:"df64", name:"DF64 Gen 2", confidence:"estimate",
    scheme:{type:"stepless", min:0, max:90, precision:1},
    anchors:[["0",180],["90",1050]],
    brewRanges:{Espresso:["10","25"]},
-   notes:""},
+   notes:"The 0–90 scale is this app's convention over a continuous collar, not printed on the grinder. Flat 64 mm burrs, broadly linear."},
 
   {id:"wilfa", name:"Wilfa Uniform", confidence:"estimate",
    scheme:{type:"simple-steps", min:1, max:41},
    anchors:[["1",220],["41",1010]],
-   brewRanges:{Espresso:["5","5"]},
-   notes:""},
+   brewRanges:{},
+   notes:"41 steps, filter-oriented flat burrs, roughly linear. Not an espresso grinder."},
 
   {id:"specialita", name:"Eureka Mignon Specialita", confidence:"estimate",
    scheme:{type:"stepless", min:0, max:48, precision:1},
    anchors:[["0",195],["48",1400]],
    brewRanges:{},
-   notes:"Stepless worm dial — treated as continuous 0–48 marks (~25 µm/mark). Espresso-focused."},
+   notes:"Stepless worm dial — the 0–48 scale is this app's convention over a continuous adjustment. Espresso-focused, so the coarse end is the least validated part of its range."},
 
   {id:"skerton", name:"Hario Skerton Pro", confidence:"estimate",
    scheme:{type:"clicks", min:0, max:11},
    anchors:[["0",350],["11",1400]],
    brewRanges:{},
-   notes:"24 clicks/rotation, ~100 µm/click. Filter only. Hand grinder — zero point varies."},
+   notes:"Weakest dataset here. Filter only, and the ceramic burr has enough axial play that coarse consistency is poor — treat every number as approximate. Hand grinder — zero point varies."},
 ];
 
 /* ============================================================
@@ -658,7 +941,11 @@ function defaultState(){
     grinders:SEED_GRINDERS.map(freshGrinderFromSeed),
     methods:JSON.parse(JSON.stringify(DEFAULT_METHODS)),
     setups:[],
-    ui:{srcId:"ode2", srcSet:"3", tgtId:"c40", firstRun:true, theme:"system"}
+    /* one shared brew context — every screen reads this, nothing owns a
+       private copy. pos is always a valid numeric position in srcId's own
+       scheme (no free-text entry point in this UI — steppers/slider/dial
+       only), so it never needs re-parsing on render. */
+    ui:{srcId:"ode2", tgtId:"c40", pos:6, methodId:"Pour over (V60, Chemex, drip)"}
   };
 }
 function load(){
@@ -690,100 +977,40 @@ const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function opt(sel, id, name, extra=""){ const o=document.createElement("option"); o.value=id; o.textContent=name+extra; sel.appendChild(o); }
 
-function grinderOptions(sel, selectedId, {includeMicron=true}={}){
-  sel.innerHTML="";
-  if(includeMicron) opt(sel,"microns","µ Microns (raw)");
-  state.grinders.forEach(g=>opt(sel,g.id, (g.fav?"★ ":"")+g.name, g.confidence==="estimate"?"  ·est":""));
-  sel.value=selectedId;
-}
-function confBadge(g){
-  return g.confidence==="estimate"
-    ? '<span class="badge est" title="community estimate — dial in by taste">estimate</span>'
-    : '<span class="badge ver" title="endpoints verified vs honestcoffeeguide.com">verified</span>';
-}
-
 /* ============================================================
-   CONVERTER
+   VIEW-ONLY DISPLAY HELPERS
+   (short names / categories are cosmetic groupings the redesign needs;
+   they never touch SEED_GRINDERS/DEFAULT_METHODS or their runtime copies —
+   built-ins are looked up by a side table, customs may carry an optional
+   field set only on the new object, so the preserved shapes stay untouched.)
    ============================================================ */
-function refreshConverterPickers(){
-  grinderOptions($("#srcG"), state.ui.srcId);
-  grinderOptions($("#tgtG"), state.ui.tgtId);
-  $("#srcSet").value = state.ui.srcSet;
-  updateSrcMeta(); updateTgtMeta(); renderConvert();
+const GRINDER_SHORT = {
+  "ode2":"Ode 2", "opus":"Opus", "xbloom":"xBloom", "c40":"C40",
+  "encore-esp":"Encore ESP", "encore":"Encore", "c40-redclix":"C40 RedClix",
+  "jx-pro":"JX-Pro", "k-ultra":"K-Ultra", "timemore-c3":"C3", "k6":"K6",
+  "niche":"Niche", "df64":"DF64", "wilfa":"Wilfa", "specialita":"Specialita",
+  "skerton":"Skerton"
+};
+function shortGrinderName(g){
+  return g.short || GRINDER_SHORT[g.seedId] || g.name.split(" ")[0];
 }
-function isMicron(id){ return id==="microns"; }
+const METHOD_SHORT = {
+  "Turkish":"Turkish","Espresso":"Espresso","Moka pot":"Moka","AeroPress":"AeroPress",
+  "Pour over (V60, Chemex, drip)":"Pour over","Cupping (SCA)":"Cupping",
+  "French press":"French","Cold brew":"Cold brew"
+};
+function shortMethodName(m){ return m.short || METHOD_SHORT[m.name] || m.name.split(" ")[0]; }
+/* Seed methods carry their own family; the map is only a fallback for
+   user-added brewers that predate it. */
+const FAMILY_CAT = { pour:"pour", immersion:"imm", other:"other" };
+const METHOD_CAT = {
+  "Turkish":"other","Espresso":"other","Moka pot":"other",
+  "AeroPress":"imm","French press":"imm","Cold brew":"imm",
+  "Pour over (V60, Chemex, drip)":"pour","Cupping (SCA)":"imm"
+};
+function methodCategory(m){ return m.cat || FAMILY_CAT[m.family] || METHOD_CAT[m.name] || "other"; }
+const CATS = [ {id:"pour", name:"Pour-over"}, {id:"imm", name:"Immersion"}, {id:"other", name:"Other"} ];
 
-/* ---- source slider: same value as the text box, easier with a thumb ---- */
-function configSlider(){
-  const r=$("#srcRange"), lo=$("#srcRangeLo"), hi=$("#srcRangeHi");
-  if(!r) return;
-  const id=state.ui.srcId;
-  if(isMicron(id)){
-    r.min=0; r.max=1500; r.step=5;
-    lo.textContent="0 µm"; hi.textContent="1500 µm";
-  } else {
-    const g=grinderById(id); if(!g) return;
-    const R=posRange(g.scheme);
-    r.min=R.min; r.max=R.max;
-    // stepped grinders move one detent at a time; stepless uses its own precision
-    r.step = isStepped(g.scheme) ? 1 : Math.pow(10, -(g.scheme.precision||1));
-    lo.textContent=formatSetting(g.scheme,R.min).replace(" clicks","");
-    hi.textContent=formatSetting(g.scheme,R.max).replace(" clicks","");
-  }
-  syncSliderFromInput();
-}
-function syncSliderFromInput(){
-  const r=$("#srcRange"); if(!r) return;
-  const id=state.ui.srcId, raw=$("#srcSet").value;
-  if(isMicron(id)){
-    const v=parseFloat(raw);
-    if(!isNaN(v)) r.value=Math.max(0,Math.min(1500,v));
-    return;
-  }
-  const g=grinderById(id); if(!g) return;
-  const p=parseSetting(g.scheme, raw);
-  if(p.ok) r.value=p.pos;
-}
-function onSliderInput(){
-  const id=state.ui.srcId, v=parseFloat($("#srcRange").value);
-  if(isMicron(id)) $("#srcSet").value=String(Math.round(v));
-  else {
-    const g=grinderById(id);
-    $("#srcSet").value=formatSetting(g.scheme, snapPos(g.scheme, v)).replace(" clicks","");
-  }
-  renderConvert();
-}
-
-function updateSrcMeta(){
-  const id=state.ui.srcId, box=$("#srcMeta"), label=$("#srcSetLabel");
-  const steppers=$("#srcMinus"), plus=$("#srcPlus");
-  if(isMicron(id)){
-    box.innerHTML="Enter a target particle size directly.";
-    label.textContent="Microns (µm)";
-    $("#srcSet").setAttribute("inputmode","numeric");
-    steppers.classList.add("hidden"); plus.classList.add("hidden");
-    configSlider();
-    return;
-  }
-  const g=grinderById(id);
-  box.innerHTML=confBadge(g)+" "+esc(schemeLabel(g.scheme))+notesBtn(g);
-  label.textContent="Setting ("+schemeExample(g.scheme)+")";
-  $("#srcSet").setAttribute("inputmode","decimal");
-  const stepped=isStepped(g.scheme);
-  steppers.classList.toggle("hidden",!stepped);
-  plus.classList.toggle("hidden",!stepped);
-  configSlider();
-}
-function updateTgtMeta(){
-  const id=state.ui.tgtId, box=$("#tgtMeta");
-  if(isMicron(id)){ box.innerHTML="Result shown as raw particle size."; return; }
-  const g=grinderById(id);
-  box.innerHTML=confBadge(g)+" "+esc(schemeLabel(g.scheme))+notesBtn(g);
-}
-function notesBtn(g){
-  if(!g.notes) return "";
-  return ` · <a href="#" data-note="${g.id}">why?</a>`;
-}
 function schemeLabel(sc){
   switch(sc.type){
     case "simple-steps": return `steps ${sc.min}–${sc.max}`;
@@ -795,725 +1022,1022 @@ function schemeLabel(sc){
       : `R.C · ${sc.clicksPerRotation}/rot`;
   }
 }
-function schemeExample(sc){
-  switch(sc.type){
-    case "simple-steps": return "e.g. "+Math.round((sc.min+sc.max)/2);
-    case "clicks": return "e.g. "+Math.round((sc.min+sc.max)/2);
-    case "stepless": return "e.g. "+((sc.min+sc.max)/2).toFixed(sc.precision||1);
-    case "numbered-substeps": return "e.g. 3.2";
-    case "rotations-clicks": return sc.style==="RNT"?"e.g. 1.3.2":"e.g. 2.42";
-  }
+function stepUnitNoun(sc, n){
+  const clicky = sc.type==="clicks" || sc.type==="rotations-clicks";
+  return clicky ? (n===1?"click":"clicks") : (n===1?"step":"steps");
+}
+function nativeFmt(sc, pos){ return formatSetting(sc, pos).replace(" clicks",""); }
+
+/* honest per-position tolerance: half the µm span of one native detent at the
+   current position, read straight off the grinder's own (possibly
+   multi-anchor, non-linear) curve — not a global (hi-lo)/(max-min) formula,
+   which breaks the moment a grinder has more than two anchors. */
+function targetTolerance(g, pos){
+  const sc=g.scheme;
+  const unit = isStepped(sc) ? 1 : Math.pow(10, -(sc.precision||1));
+  const lo=clampPos(sc,pos-unit), hi=clampPos(sc,pos+unit);
+  const span=Math.abs(posToMicron(g,hi)-posToMicron(g,lo))/2;
+  return Math.max(1, span);
 }
 
-/* returns {ok, um} from the source side */
-function readSource(){
-  const id=state.ui.srcId, raw=$("#srcSet").value;
-  if(isMicron(id)){
-    const v=parseFloat(raw);
-    if(isNaN(v)||v<=0) return {ok:false, error:"Enter microns (µm)."};
-    return {ok:true, um:v};
+/* grinder's method range, preferring a verified per-grinder brew range over
+   the generic global µm target (existing app behaviour, kept: it is more
+   honest than deriving purely from the global method window). */
+function grinderMethodRange(g, methodName){
+  if(g.brew && g.brew[methodName]){
+    const b=g.brew[methodName];
+    const loPos=snapPos(g.scheme,b.minPos), hiPos=snapPos(g.scheme,b.maxPos);
+    return {
+      loPos, hiPos, midPos:snapPos(g.scheme,(b.minPos+b.maxPos)/2),
+      umLo:posToMicron(g,loPos), umHi:posToMicron(g,hiPos), source:"grinder"
+    };
   }
-  const g=grinderById(id);
-  const p=parseSetting(g.scheme, raw);
-  if(!p.ok) return {ok:false, error:p.error};
-  return {ok:true, um:posToMicron(g,p.pos), pos:p.pos};
+  const m=state.methods.find(x=>x.name===methodName); if(!m) return null;
+  const rLo=micronToTarget(g,m.min), rHi=micronToTarget(g,m.max), rMid=micronToTarget(g,(m.min+m.max)/2);
+  return { loPos:rLo.pos, hiPos:rHi.pos, midPos:rMid.pos, umLo:m.min, umHi:m.max, source:"global" };
+}
+/* reconciling the two trust signals: the seed data's own confidence rating
+   (published-source verified vs. community estimate) and the new calibrated
+   flag a user sets by running the Calibrate flow themselves. Either one
+   earns the "measured" badge — a grinder doesn't need re-calibrating by
+   hand just because it shipped already verified. */
+function isMeasured(g){ return !!g.calibrated || g.confidence==="verified"; }
+function confBadgeHtml(g){
+  return isMeasured(g)
+    ? `<span class="badge ver">measured</span>`
+    : `<span class="badge est">estimate</span>`;
 }
 
+/* ============================================================
+   EPHEMERAL VIEW STATE — everything that should NOT survive a reload
+   (which screen/sheet is open, toasts, in-progress drafts). The persisted
+   brew context lives in state.ui and is read by every screen below.
+   ============================================================ */
+let vm = {
+  screen:"brew",       // 'brew' | 'library' | 'calibrate'
+  mode:"convert",      // 'convert' | 'guide'
+  libTab:"setups",     // 'setups' | 'grinders' | 'brewers'
+  cat:"pour",          // active category filter (Start here / method sheet)
+  taste:null,          // null | 'sour' | 'bitter'
+  kitchen:false, kitchenClosing:false,
+  sheet:false, methodSheet:false, addSheet:false, brewerSheet:false, anchorSheet:false,
+  saveName:"",
+  editG:null, editB:null,
+  draft:null,          // add/edit-grinder draft, built fresh each time the sheet opens
+  bDraft:null,         // add/edit-brewer draft
+  calId:null, calLo:"", calHi:"",
+  toast:"",
+  tilt:null
+};
+let toastTimer=null, holdTimer=null, dialDrag=null, kitchenTimer=null;
+
+function currentSrc(){ return grinderById(state.ui.srcId); }
+function currentTgt(){ return grinderById(state.ui.tgtId); }
+function currentMethod(){ return state.methods.find(m=>m.name===state.ui.methodId) || state.methods[0]; }
+function currentUm(){ return posToMicron(currentSrc(), state.ui.pos); }
+
+function toast(msg){
+  vm.toast=msg;
+  const wrap=$("#toastWrap");
+  $("#toastBubble").textContent=msg;
+  wrap.classList.remove("hidden");
+  // restart the pop animation on repeat toasts
+  const bubble=$("#toastBubble"); bubble.style.animation="none"; void bubble.offsetWidth; bubble.style.animation="";
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ vm.toast=""; wrap.classList.add("hidden"); }, 1900);
+}
+
+/* ============================================================
+   BUMP / HOLD-TO-REPEAT (± steppers, dial)
+   ============================================================ */
+function bump(dir){
+  const g=currentSrc();
+  const unit = isStepped(g.scheme) ? 1 : Math.pow(10, -(g.scheme.precision||1));
+  state.ui.pos = snapPos(g.scheme, +(state.ui.pos + dir*unit).toFixed(6));
+  if(navigator.vibrate) navigator.vibrate(8);
+  save();
+  renderConvert();
+  if(vm.kitchen) renderKitchen();
+}
+function startHold(dir, btn){
+  if(btn) btn.classList.add("active");
+  bump(dir);
+  let delay=400;
+  const step=()=>{ bump(dir); delay=Math.max(55, delay*0.7); holdTimer=setTimeout(step, delay); };
+  holdTimer=setTimeout(step, delay);
+}
+function stopHold(btn){
+  clearTimeout(holdTimer);
+  if(btn) btn.classList.remove("active");
+  $$(".stepBtn.active,.kStepBtn.active").forEach(b=>b.classList.remove("active"));
+}
+
+/* ============================================================
+   CONVERT
+   ============================================================ */
+/* The pair row gives each select about half of a 375px screen, where
+   "Comandante C40 MK4" is silently clipped. Short names there; the Library
+   shows full names. */
+function grinderSelectOptions(sel, selectedId, short){
+  sel.innerHTML="";
+  state.grinders.forEach(g=>opt(sel, g.id, short ? shortGrinderName(g) : g.name));
+  sel.value=selectedId;
+}
 function renderConvert(){
-  state.ui.srcSet=$("#srcSet").value;
-  syncSliderFromInput();
-  const src=readSource();
-  const errBox=$("#srcErr"), res=$("#convResult"), warnBox=$("#convWarn");
-  warnBox.innerHTML="";
-  if(!src.ok){ errBox.textContent=src.error; res.innerHTML='<span class="muted">—</span>'; renderScale(null); save(); return; }
-  errBox.textContent="";
-  const um=src.um;
-  const tid=state.ui.tgtId;
-  if(isMicron(tid)){
-    res.innerHTML=`<div class="big">${Math.round(um)} µm</div><div class="sub">source ≈ ${Math.round(um)} microns</div>`;
-    renderScale(um); save(); return;
-  }
-  const g=grinderById(tid);
-  const r=micronToTarget(g, um);
-  let sub=`≈ ${Math.round(r.micron)} µm`;
-  if(r.stepped && Math.abs(r.residual)>=1){
-    sub += ` · target was ${Math.round(um)} µm (${r.residual>0?"+":""}${Math.round(r.residual)} µm)`;
-  }
-  res.innerHTML=`<div class="big">${esc(r.native)}</div><div class="um">${Math.round(um)} µm</div><div class="sub">${sub}</div>`;
+  const src=currentSrc(), tgt=currentTgt(), m=currentMethod();
+  grinderSelectOptions($("#srcSel"), src.id, true);
+  grinderSelectOptions($("#tgtSel"), tgt.id, true);
+
+  const um = currentUm();
+  const r = micronToTarget(tgt, um);
+  const tol = targetTolerance(tgt, r.pos);
+
+  $("#outValue").textContent = nativeFmt(tgt.scheme, r.pos);
+  // tolerance is a MICRON figure — label the unit, or beside a click count it
+  // reads as "±27 clicks" on a grinder that only has 40 of them
+  $("#outTol").textContent = "±" + Math.round(tol) + " µm";
+  $("#outUnit").textContent = (isStepped(tgt.scheme)?schemeUnitWord(tgt.scheme):"setting") + " · " + Math.round(r.micron) + " µm";
+
+  // mini scale: 150–1300 µm span
+  const SC_LO=150, SC_HI=1300;
+  const pct=v=>Math.max(0,Math.min(100,(v-SC_LO)/(SC_HI-SC_LO)*100));
+  $("#scaleBand").style.left = pct(m.min)+"%";
+  $("#scaleBand").style.width = Math.max(0, pct(m.max)-pct(m.min))+"%";
+  $("#scaleMarker").style.left = pct(um)+"%";
+
+  const inRange = um>=m.min && um<=m.max;
+  const chip=$("#stateChip"), chipText=$("#stateChipText");
+  let bg, ink, text;
+  /* Deliberately softer than the design's "In the V60 window" / "Finer than
+     V60". Published brew windows disagree by hundreds of microns, none state a
+     measurement basis, and a median says nothing about the fines that drive
+     extraction — so this reports where you sit, it does not grade you. */
   if(r.warn){
-    const mr=micronRange(g);
-    const msg = r.warn==="finer"
-      ? `Finer than the ${esc(g.name)} can go — it bottoms out at ~${Math.round(mr.lo)} µm. Clamped to ${esc(r.native)}.`
-      : `Coarser than the ${esc(g.name)} can go — it tops out at ~${Math.round(mr.hi)} µm. Clamped to ${esc(r.native)}.`;
-    warnBox.innerHTML=`<div class="warnbox">${msg}</div>`;
+    bg="rgba(253,240,227,1)"; ink="#8a4708"; text="Past this grinder's range";
+  } else if(inRange){
+    bg="var(--good-bg)"; ink="var(--good-ink)"; text=`Usual range for ${shortMethodName(m)}`;
+  } else {
+    bg="rgba(255,255,255,.45)"; ink="rgba(42,26,16,.72)";
+    text = (um<m.min?`Finer than most ${shortMethodName(m)} recipes`
+                    :`Coarser than most ${shortMethodName(m)} recipes`);
   }
-  renderScale(um);
+  chip.style.background=bg; chip.style.color=ink; chipText.textContent=text;
+
+  const banner=$("#clampBanner");
+  if(r.warn){
+    const mr=micronRange(tgt);
+    banner.textContent = r.warn==="finer"
+      ? `The ${tgt.name} bottoms out at ${Math.round(mr.lo)} µm. Showing its finest setting.`
+      : `The ${tgt.name} tops out at ${Math.round(mr.hi)} µm. Showing its coarsest setting.`;
+    banner.classList.remove("hidden");
+  } else banner.classList.add("hidden");
+
+  $("#methodRowName").textContent = m.name;
+  $("#methodRowBand").innerHTML = `${m.min}–${m.max} µm <span style="font-size:11px">▾</span>`;
+
+  $("#settingValue").textContent = nativeFmt(src.scheme, state.ui.pos);
+  $("#settingUnit").textContent = (isStepped(src.scheme)?schemeUnitWord(src.scheme):"setting") + " · " + shortGrinderName(src);
+  const R=posRange(src.scheme), range=$("#settingRange");
+  range.min=R.min; range.max=R.max;
+  range.step = isStepped(src.scheme) ? 1 : Math.pow(10, -(src.scheme.precision||1));
+  range.value = state.ui.pos;
+
   save();
 }
-
-/* stepper buttons */
-function stepSource(dir){
-  const id=state.ui.srcId; if(isMicron(id)) return;
-  const g=grinderById(id);
-  const p=parseSetting(g.scheme, $("#srcSet").value);
-  let pos = p.ok ? p.pos : posRange(g.scheme).min;
-  pos = snapPos(g.scheme, pos+dir);
-  $("#srcSet").value=formatSetting(g.scheme,pos).replace(" clicks","");
-  renderConvert();
+function schemeUnitWord(sc){
+  if(sc.type==="clicks"||sc.type==="rotations-clicks") return "clicks";
+  return "setting";
 }
 
 /* ============================================================
-   VISUAL MICRON SCALE (inline SVG)
+   START HERE (guide)
    ============================================================ */
-function scaleGrinders(){
-  const ids=new Set();
-  if(!isMicron(state.ui.srcId)) ids.add(state.ui.srcId);
-  if(!isMicron(state.ui.tgtId)) ids.add(state.ui.tgtId);
-  state.grinders.filter(g=>g.fav).forEach(g=>ids.add(g.id));
-  return Array.from(ids).map(grinderById).filter(Boolean);
-}
-/* Every label lives in a left gutter on its own row, so labels can never
-   collide. The viewBox width is the measured container width, which makes
-   1 SVG unit == 1 CSS px — font sizes are then literal and stay legible on
-   a phone instead of being scaled down with the drawing. */
-let lastScaleUm = null;
-function redrawScale(){ if($("#scale")) renderScale(lastScaleUm); }
+function renderGuide(){
+  const src=currentSrc(), m=currentMethod();
+  $("#guideTitle").textContent = `${m.name} on the ${shortGrinderName(src)}`;
 
-function renderScale(currentUm){
-  lastScaleUm = currentUm;
-  const host=$("#scale");
-  if(!host) return;
-  const MAXU=1500;
-  const grinders=scaleGrinders();
-  const methods=state.methods;
-
-  const W=Math.round(Math.max(260, host.clientWidth || 680));
-  const gutter=Math.round(Math.min(132, Math.max(70, W*0.30)));
-  const padR=12, plotX=gutter, plotW=Math.max(80, W-gutter-padR);
-
-  const titleH=16, mRow=16, midGap=23, gRow=30, axisH=21, padL=2;
-  const mTop=titleH+6;
-  const mBot=mTop+methods.length*mRow;
-  const gTop=mBot+midGap;
-  const gBot=gTop+grinders.length*gRow;
-  const H=gBot+axisH;
-
-  const x=um=>plotX + Math.max(0,Math.min(MAXU,um))/MAXU*plotW;
-  const css=getComputedStyle(document.body);
-  const line=css.getPropertyValue("--line").trim(), ink=css.getPropertyValue("--ink").trim(),
-        muted=css.getPropertyValue("--muted").trim(), accent=css.getPropertyValue("--accent").trim(),
-        panel=css.getPropertyValue("--panel").trim();
-
-  // conservative per-char estimate — overflowing the gutter clips the label
-  const maxChars=Math.max(7, Math.floor((gutter-10-padL)/6.1));
-  const fit=t=>{ t=String(t); return t.length>maxChars ? t.slice(0,maxChars-1)+"…" : t; };
-  const step = plotW<200 ? 750 : plotW<300 ? 500 : 250;
-
-  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" `+
-        `aria-label="Particle size scale: brew-method target ranges and the span of each grinder, in microns">`;
-
-  s+=`<text x="${padL}" y="11" font-size="10.5" fill="${muted}" letter-spacing=".04em">PARTICLE SIZE (µm) · BREW TARGETS</text>`;
-
-  // vertical gridlines span both sections so the two read on one axis
-  for(let u=0;u<=MAXU;u+=step){
-    const xx=x(u);
-    s+=`<line x1="${xx}" y1="${mTop-3}" x2="${xx}" y2="${gBot+3}" stroke="${line}" stroke-width="1"/>`;
-    s+=`<text x="${xx}" y="${gBot+16}" font-size="10" fill="${muted}" text-anchor="middle">${u}</text>`;
-  }
-
-  // current value: drawn before labels so text stays on top
-  if(currentUm!=null){
-    const cx=x(currentUm);
-    s+=`<line x1="${cx}" y1="${mTop-3}" x2="${cx}" y2="${gBot+3}" stroke="${accent}" stroke-width="2" stroke-dasharray="3 2"/>`;
-  }
-
-  // brew-method target ranges — one row each
-  methods.forEach((m,i)=>{
-    const y=mTop+i*mRow, cy=y+mRow/2;
-    const hit = currentUm!=null && currentUm>=m.min && currentUm<=m.max;
-    const x0=x(m.min), w=Math.max(2,x(m.max)-x(m.min));
-    s+=`<rect x="${x0}" y="${cy-4.5}" width="${w}" height="9" rx="4.5" fill="${accent}" opacity="${hit?0.42:0.16}"/>`;
-    s+=`<text x="${gutter-8}" y="${cy+3.5}" font-size="10" text-anchor="end" `+
-       `fill="${hit?accent:muted}"${hit?' font-weight="600"':''}>`+
-       `<title>${esc(m.name)} · ${m.min}–${m.max} µm</title>${esc(fit(m.name.split(" / ")[0]))}</text>`;
+  const seg=$("#guideCatSeg"); seg.innerHTML="";
+  CATS.forEach(c=>{
+    const b=document.createElement("button"); b.type="button"; b.textContent=c.name;
+    b.className = c.id===vm.cat ? "on" : "";
+    b.onclick=()=>{ vm.cat=c.id; renderGuide(); };
+    seg.appendChild(b);
+  });
+  const chips=$("#guideMethodChips"); chips.innerHTML="";
+  state.methods.filter(x=>methodCategory(x)===vm.cat).forEach(x=>{
+    const b=document.createElement("button"); b.type="button"; b.textContent=shortMethodName(x);
+    b.className = x.name===state.ui.methodId ? "on" : "";
+    b.onclick=()=>{ state.ui.methodId=x.name; save(); renderGuide(); };
+    chips.appendChild(b);
   });
 
-  s+=`<line x1="0" y1="${mBot+8}" x2="${W}" y2="${mBot+8}" stroke="${line}" stroke-width="1"/>`;
-  s+=`<text x="${padL}" y="${mBot+20}" font-size="10.5" fill="${muted}" letter-spacing=".04em">YOUR GRINDERS</text>`;
-
-  /* Grinder names sit above their bar rather than in the gutter — names like
-     "Comandante C40 MK4" do not fit a phone-width gutter, and truncating the
-     one label the user most needs to read is the wrong trade. */
-  grinders.forEach((g,i)=>{
-    const rowTop=gTop+i*gRow;
-    const cy=rowTop+21;
-    const mr=micronRange(g);
-    s+=`<text x="${padL}" y="${rowTop+11}" font-size="11" fill="${ink}">`+
-       `${esc(g.name)} <tspan fill="${muted}" font-size="10">${Math.round(mr.lo)}–${Math.round(mr.hi)} µm</tspan></text>`;
-    s+=`<rect x="${x(mr.lo)}" y="${cy-5}" width="${Math.max(2,x(mr.hi)-x(mr.lo))}" height="10" rx="5" fill="${muted}" opacity=".26"/>`;
-    let markUm=null;
-    if(g.id===state.ui.srcId){ const sr=readSource(); if(sr.ok) markUm=sr.um; }
-    else if(currentUm!=null){ markUm=micronToTarget(g,currentUm).micron; }
-    if(markUm!=null){
-      s+=`<circle cx="${x(markUm)}" cy="${cy}" r="5" fill="${accent}" stroke="${panel}" stroke-width="1.5"/>`;
-    }
-  });
-
-  s+=`</svg>`;
-  host.innerHTML=s;
-}
-
-/* ============================================================
-   TARGETS TAB
-   ============================================================ */
-let curMethod=state=>null;
-function renderMethodPills(container, selectedName, onPick){
-  container.innerHTML="";
-  state.methods.forEach(m=>{
-    const b=document.createElement("button");
-    b.className="pill"; b.type="button"; b.textContent=m.name;
-    b.setAttribute("aria-pressed", m.name===selectedName);
-    b.onclick=()=>onPick(m.name);
-    container.appendChild(b);
-  });
-}
-let targetsSel={gid:"ode2", method:"Pour over / V60"};
-function renderTargets(){
-  grinderOptions($("#tgtMethodG"), targetsSel.gid, {includeMicron:false});
-  renderMethodPills($("#methodPills"), targetsSel.method, (m)=>{targetsSel.method=m; renderTargets();});
-  const g=grinderById(targetsSel.gid);
-  const r=grinderMethodRange(g, targetsSel.method);
-  const res=$("#methodResult");
-  if(!r){ res.innerHTML='<span class="muted">No range.</span>'; return; }
-  const src = r.source==="grinder" ? "verified for this grinder" : "derived from global µm target";
-  res.innerHTML=`<div class="big" style="font-size:1.5rem">${esc(r.nativeLo)} – ${esc(r.nativeHi)}</div>
-    <div class="um">${Math.round(r.umLo)}–${Math.round(r.umHi)} µm</div>
-    <div class="sub">${esc(targetsSel.method)} on ${esc(g.name)} · ${src}</div>`;
-}
-function grinderMethodRange(g, method){
-  if(g.brew && g.brew[method]){
-    const b=g.brew[method];
-    return {
-      nativeLo:formatSetting(g.scheme, snapPos(g.scheme,b.minPos)),
-      nativeHi:formatSetting(g.scheme, snapPos(g.scheme,b.maxPos)),
-      umLo:posToMicron(g,b.minPos), umHi:posToMicron(g,b.maxPos),
-      midUm:(posToMicron(g,b.minPos)+posToMicron(g,b.maxPos))/2,
-      source:"grinder"
-    };
-  }
-  const m=state.methods.find(x=>x.name===method); if(!m) return null;
-  const rLo=micronToTarget(g,m.min), rHi=micronToTarget(g,m.max);
-  return {
-    nativeLo:rLo.native, nativeHi:rHi.native,
-    umLo:m.min, umHi:m.max, midUm:(m.min+m.max)/2, source:"global"
+  const gr=grinderMethodRange(src, m.name);
+  $("#recLo").textContent = nativeFmt(src.scheme, gr.loPos);
+  $("#recHi").textContent = nativeFmt(src.scheme, gr.hiPos);
+  $("#recSub").textContent = (isStepped(src.scheme)?schemeUnitWord(src.scheme):"setting") + " · " + Math.round(gr.umLo) + "–" + Math.round(gr.umHi) + " µm";
+  $("#useMidBtn").textContent = `Use ${nativeFmt(src.scheme, gr.midPos)} and start brewing`;
+  $("#useMidBtn").onclick=()=>{
+    state.ui.pos = gr.midPos; save();
+    vm.mode="convert"; renderScreens(); renderConvert();
   };
-}
 
-/* multi-target */
-let mtSel={gid:"ode2"};
-function renderMultiTarget(){
-  grinderOptions($("#mtG"), mtSel.gid, {includeMicron:false});
-  const g=grinderById(mtSel.gid);
-  const raw=$("#mtSet").value.trim();
-  const list=$("#mtList"), err=$("#mtErr");
-  const favs=state.grinders.filter(x=>x.fav);
-  if(raw===""){ err.textContent=""; list.innerHTML=`<li class="muted small">Enter a setting above.</li>`; return; }
-  const p=parseSetting(g.scheme, raw);
-  if(!p.ok){ err.textContent=p.error; list.innerHTML=""; return; }
-  err.textContent="";
-  const um=posToMicron(g,p.pos);
-  if(favs.length===0){ list.innerHTML=`<li class="muted small">No favorites yet — star grinders on the My grinders tab.</li>`; return; }
-  list.innerHTML=favs.map(t=>{
-    if(t.id===g.id){
-      return `<li class="top"><b>${esc(t.name)}</b> <span class="mono">${esc(formatSetting(t.scheme,p.pos))}</span></li>`;
-    }
-    const r=micronToTarget(t,um);
-    const warn=r.warn?` <span class="badge est">${r.warn==="finer"?"↓ min":"↑ max"}</span>`:"";
-    return `<li><div class="top"><b>${esc(t.name)}</b>${warn}<span class="mono">${esc(r.native)}</span></div>
-      <div class="tiny muted">≈ ${Math.round(r.micron)} µm</div></li>`;
-  }).join("");
+  $("#tasteTitle").textContent = `Tasted it? Adjust from ${nativeFmt(src.scheme, state.ui.pos)}.`;
+  $("#adviceText").textContent = vm.taste==="sour"
+    ? `Sour means under-extracted. Take it 2 ${stepUnitNoun(src.scheme,2)} finer, brew again, change nothing else.`
+    : vm.taste==="bitter"
+    ? `Bitter means over-extracted. Take it 2 ${stepUnitNoun(src.scheme,2)} coarser, brew again, change nothing else.`
+    : "One variable at a time — grind, dose, or ratio. Then taste again.";
+}
+function guideAdjust(dir){
+  const src=currentSrc();
+  const unit = isStepped(src.scheme) ? 1 : Math.pow(10, -(src.scheme.precision||1));
+  vm.taste = dir<0 ? "sour" : "bitter";
+  state.ui.pos = clampPos(src.scheme, state.ui.pos + dir*2*unit);
+  save(); renderGuide();
 }
 
 /* ============================================================
-   DIAL-IN TAB
-   ============================================================ */
-let diSel={gid:"c40", method:"Pour over / V60", taste:"sour"};
-function renderDialIn(){
-  grinderOptions($("#diG"), diSel.gid, {includeMicron:false});
-  renderMethodPills($("#diMethodPills"), diSel.method, (m)=>{diSel.method=m; renderDialIn();});
-  $$("#diTaste button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.t===diSel.taste));
-  const g=grinderById(diSel.gid);
-  const raw=$("#diSet").value.trim();
-  const res=$("#diResult"), err=$("#diErr");
-  if(raw===""){ err.textContent=""; res.innerHTML='<span class="muted">Enter your current setting.</span>'; return; }
-  const p=parseSetting(g.scheme, raw);
-  if(!p.ok){ err.textContent=p.error; res.innerHTML=""; return; }
-  err.textContent="";
-  const um=posToMicron(g,p.pos);
-  // espresso-ish if target band midpoint < 400µm
-  const espresso = um < 420;
-  const deltaUm = espresso ? 40 : 110;                       // typical nudge
-  const finer = diSel.taste==="sour";                        // sour → finer
-  const signedUm = finer ? -deltaUm : deltaUm;
-  const newUm = um + signedUm;
-  const r=micronToTarget(g, newUm);
-  const dir = finer ? "finer" : "coarser";
-  // express the move in native steps
-  let stepTxt;
-  if(isStepped(g.scheme)){
-    const cur=snapPos(g.scheme,p.pos), nxt=r.pos, d=Math.abs(nxt-cur);
-    const unit = g.scheme.type==="clicks"||g.scheme.type==="rotations-clicks" ? (d===1?"click":"clicks") : (d===1?"step":"steps");
-    stepTxt = `move ${d} ${unit} ${dir} — from <b>${esc(formatSetting(g.scheme,cur))}</b> to <b>${esc(r.native)}</b>`;
-  } else {
-    stepTxt = `go ${dir} — from <b>${esc(formatSetting(g.scheme,p.pos))}</b> to <b>${esc(r.native)}</b>`;
-  }
-  res.innerHTML=`<div style="font-size:1.05rem;line-height:1.4">${stepTxt}</div>
-    <div class="sub">${finer?"Sour/weak/underextracted":"Bitter/harsh/overextracted"} → go ${dir}. ≈ ${deltaUm} µm (${espresso?"espresso":"filter"} range).</div>`;
-}
-
-/* ============================================================
-   MY GRINDERS TAB
-   ============================================================ */
-function renderGrinders(){
-  const ul=$("#grinderList");
-  ul.innerHTML=state.grinders.map(g=>{
-    const mr=micronRange(g);
-    return `<li>
-      <div class="top">
-        <div><b>${esc(g.name)}</b> ${confBadge(g)}</div>
-        <button class="pill" data-fav="${g.id}" aria-pressed="${!!g.fav}" title="favorite">${g.fav?"★":"☆"}</button>
-      </div>
-      <div class="tiny muted">${esc(schemeLabel(g.scheme))} · ${Math.round(mr.lo)}–${Math.round(mr.hi)} µm · ${g.anchors.length} anchors</div>
-      <div class="btnrow">
-        <button class="btn ghost small" data-editanchor="${g.id}" style="min-height:0;padding:6px 10px">Edit calibration</button>
-        ${g.builtin?`<button class="btn ghost small" data-reset="${g.id}" style="min-height:0;padding:6px 10px">Reset to defaults</button>`:""}
-        <button class="btn ghost small" data-editg="${g.id}" style="min-height:0;padding:6px 10px">Rename</button>
-        ${g.builtin?"":`<button class="btn ghost small danger" data-delg="${g.id}" style="min-height:0;padding:6px 10px">Delete</button>`}
-      </div>
-    </li>`;
-  }).join("");
-}
-
-/* ============================================================
-   SETUPS TAB
+   LIBRARY — Dial-ins
    ============================================================ */
 function renderSetups(){
-  const ul=$("#setupList");
-  if(state.setups.length===0){ ul.innerHTML=`<li class="muted small">No saved setups yet.</li>`; return; }
-  ul.innerHTML=state.setups.map((s,i)=>{
+  const list=$("#setupsList"), empty=$("#setupsEmpty");
+  if(state.setups.length===0){ empty.classList.remove("hidden"); list.innerHTML=""; $("#setupsHint").classList.add("hidden"); return; }
+  empty.classList.add("hidden"); $("#setupsHint").classList.remove("hidden");
+  list.innerHTML = state.setups.map((s,i)=>{
     const g=grinderById(s.gid);
-    const gname=g?g.name:"(deleted grinder)";
-    return `<li>
-      <div class="top"><b>${esc(s.name)}</b>
-        <span class="mono">${esc(s.setting)}</span></div>
-      <div class="tiny muted">${esc(gname)} · ${esc(s.method||"—")} · ${esc(s.dose||"")}</div>
-      ${s.notes?`<div class="small" style="margin-top:4px">${esc(s.notes)}</div>`:""}
-      <div class="btnrow">
-        <button class="btn ghost small" data-loadsetup="${i}" style="min-height:0;padding:6px 10px">Load into converter</button>
-        <button class="btn ghost small danger" data-delsetup="${i}" style="min-height:0;padding:6px 10px">Delete</button>
-      </div>
-    </li>`;
+    if(!g) return "";
+    const um = posToMicron(g, s.pos);
+    return `<div class="setupRow">
+      <button type="button" class="main" data-loadsetup="${i}">
+        <div class="name">${esc(s.name)}</div>
+        <div class="sub">${esc(shortGrinderName(g))} · ${esc(nativeFmt(g.scheme,s.pos))} ${esc(schemeUnitWord(g.scheme))} · ${esc(s.mid)}</div>
+      </button>
+      <div class="um mono">${Math.round(um)} µm</div>
+      <button type="button" class="del" data-delsetup="${i}" aria-label="Delete">×</button>
+    </div>`;
   }).join("");
 }
-
-/* ============================================================
-   MODALS
-   ============================================================ */
-function openModal(html){ $("#modal").innerHTML=html; $("#modalBg").classList.add("open"); }
-function closeModal(){ $("#modalBg").classList.remove("open"); $("#modal").innerHTML=""; }
-$("#modalBg").addEventListener("click",e=>{ if(e.target.id==="modalBg") closeModal(); });
-
-function noteModal(g){
-  openModal(`<h2>${esc(g.name)} <button class="x" data-close type="button">×</button></h2>
-    <p>${esc(g.notes)}</p>
-    ${g.confidence==="estimate"?'<p class="small muted">This grinder\'s calibration is a <b>community estimate</b>. Edit its anchors to match your unit.</p>':""}
-    <div class="btnrow"><button class="btn primary full" data-close type="button">Got it</button></div>`);
-}
-
-/* ---- anchor editor ---- */
-function anchorModal(g){
-  const rows=g.anchors.slice().sort((a,b)=>a.position-b.position).map((a,i)=>anchorRowHtml(g,a,i)).join("");
-  openModal(`<h2>Calibrate ${esc(g.name)} <button class="x" data-close type="button">×</button></h2>
-    <p class="small muted">Map settings (native notation) to median particle size (µm). Piecewise-linear between anchors — add more for non-linear grinders. Min 2.</p>
-    <div id="anchorRows">${rows}</div>
-    <div class="btnrow"><button class="btn" id="addAnchor" type="button">+ Add anchor</button></div>
-    <div class="err" id="anchorErr"></div>
-    <div class="btnrow"><button class="btn primary full" id="saveAnchors" type="button">Save calibration</button></div>`);
-  $("#addAnchor").onclick=()=>{
-    const wrap=$("#anchorRows");
-    const div=document.createElement("div");
-    div.innerHTML=anchorRowHtml(g,{nativeGuess:"",microns:""},wrap.children.length);
-    wrap.appendChild(div.firstElementChild);
-  };
-  $("#saveAnchors").onclick=()=>{
-    const anchors=[];
-    for(const row of $$("#anchorRows .anchorRow")){
-      const nat=row.querySelector("[data-nat]").value.trim();
-      const um=parseFloat(row.querySelector("[data-um]").value);
-      if(nat===""&&isNaN(um)) continue;
-      const p=parseSetting(g.scheme, nat);
-      if(!p.ok){ $("#anchorErr").textContent=`Setting "${nat}": ${p.error}`; return; }
-      if(isNaN(um)||um<0){ $("#anchorErr").textContent=`Microns for "${nat}" must be a positive number.`; return; }
-      anchors.push({position:p.pos, microns:um});
-    }
-    if(anchors.length<2){ $("#anchorErr").textContent="At least 2 anchors required."; return; }
-    anchors.sort((a,b)=>a.position-b.position);
-    // monotonic check
-    for(let i=1;i<anchors.length;i++){
-      if(anchors[i].position===anchors[i-1].position){ $("#anchorErr").textContent="Two anchors share the same setting."; return; }
-      if(anchors[i].microns<=anchors[i-1].microns){ $("#anchorErr").textContent="Microns must increase with the setting."; return; }
-    }
-    g.anchors=anchors; save(); closeModal(); refreshAll();
-  };
-}
-function anchorRowHtml(g,a,i){
-  const nat = a.nativeGuess!==undefined ? a.nativeGuess : formatSetting(g.scheme, a.position).replace(" clicks","");
-  return `<div class="anchorRow">
-    <input data-nat type="text" inputmode="decimal" placeholder="setting" value="${esc(nat)}">
-    <input data-um type="number" inputmode="numeric" placeholder="µm" value="${a.microns===""?"":esc(a.microns)}">
-    <button class="x" data-delrow type="button" aria-label="remove">×</button>
-  </div>`;
-}
-
-/* ---- rename grinder ---- */
-function renameModal(g){
-  openModal(`<h2>Rename <button class="x" data-close type="button">×</button></h2>
-    <label>Name</label><input id="rn" type="text" value="${esc(g.name)}">
-    <div class="btnrow"><button class="btn primary full" id="rnSave" type="button">Save</button></div>`);
-  $("#rnSave").onclick=()=>{ const v=$("#rn").value.trim(); if(v){ g.name=v; save(); closeModal(); refreshAll(); } };
-}
-
-/* ---- custom grinder wizard (§6.6) ---- */
-function wizardModal(){
-  const w={step:1, name:"", scheme:null, calibMode:"minmax", data:{}};
-  const schemes=[
-    {t:"simple-steps", label:"Numbered steps", ex:"Baratza Encore · setting 18", desc:"Whole-number dial, step 1."},
-    {t:"numbered-substeps", label:"Numbered with sub-steps", ex:"Fellow Ode · 3.2", desc:"Main numbers with detents between them."},
-    {t:"clicks", label:"Clicks from zero", ex:"Comandante · 24 clicks", desc:"Count clicks from burrs touching."},
-    {t:"rotations-clicks", label:"Rotations + clicks", ex:"1Zpresso · 1.3.2", desc:"Multiple turns of a dial."},
-    {t:"stepless", label:"Stepless", ex:"Niche Zero · 17.3", desc:"Continuous, no detents."},
-  ];
-  function render(){
-    let body="";
-    if(w.step===1){
-      body=`<label>Grinder name</label><input id="wzName" type="text" placeholder="e.g. My Kinu M47" value="${esc(w.name)}">
-        <div class="btnrow"><button class="btn primary full" id="wzNext" type="button">Next →</button></div>`;
-    } else if(w.step===2){
-      body=`<p class="small muted">How does this grinder express its settings?</p>`+
-        schemes.map(s=>`<button class="btn full" style="text-align:left;margin:6px 0" data-scheme="${s.t}">
-          <b>${s.label}</b> — <span class="muted">${s.ex}</span><br><span class="tiny muted">${s.desc}</span></button>`).join("")+
-        `<div class="btnrow"><button class="btn ghost" data-back type="button">← Back</button></div>`;
-    } else if(w.step===3){
-      body=schemeConfigForm(w.scheme)+
-        `<div class="err" id="wzErr"></div>
-         <div class="btnrow"><button class="btn ghost" data-back type="button">← Back</button>
-         <button class="btn primary" id="wzNext" type="button">Next →</button></div>`;
-    } else if(w.step===4){
-      body=`<p class="small muted">Calibration — how the setting maps to microns. At least 2 anchors.</p>
-        <div class="seg" id="calibMode">
-          <button data-m="minmax" aria-pressed="true" type="button">Min/max µm</button>
-          <button data-m="perstep" aria-pressed="false" type="button">µm per step</button>
-          <button data-m="anchors" aria-pressed="false" type="button">Anchor list</button>
-        </div>
-        <div id="calibForm" style="margin-top:10px"></div>
-        <div class="err" id="wzErr"></div>
-        <div class="btnrow"><button class="btn ghost" data-back type="button">← Back</button>
-        <button class="btn primary" id="wzFinish" type="button">Create grinder</button></div>`;
-    }
-    openModal(`<h2>New grinder · step ${w.step}/4 <button class="x" data-close type="button">×</button></h2>${body}`);
-    wire();
-  }
-  function wire(){
-    const nb=$("#wzNext"), bb=$("[data-back]");
-    if(bb) bb.onclick=()=>{ w.step--; render(); };
-    if(w.step===1&&nb) nb.onclick=()=>{ w.name=$("#wzName").value.trim()||"Custom grinder"; w.step=2; render(); };
-    if(w.step===2){
-      $$("[data-scheme]").forEach(b=>b.onclick=()=>{ w.scheme={type:b.dataset.scheme}; w.step=3; render(); });
-    }
-    if(w.step===3&&nb) nb.onclick=()=>{ if(readSchemeConfig(w)) { w.step=4; render(); } };
-    if(w.step===4){
-      renderCalibForm(w);
-      $$("#calibMode button").forEach(b=>b.onclick=()=>{ w.calibMode=b.dataset.m; $$("#calibMode button").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderCalibForm(w); });
-      $("#wzFinish").onclick=()=>finishWizard(w);
-    }
-  }
-  render();
-}
-function schemeConfigForm(sc){
-  switch(sc.type){
-    case "simple-steps": case "clicks":
-      return `<label>Minimum setting</label><input id="cf_min" type="number" value="0">
-              <label>Maximum setting</label><input id="cf_max" type="number" value="40">`;
-    case "stepless":
-      return `<label>Minimum</label><input id="cf_min" type="number" value="0">
-              <label>Maximum</label><input id="cf_max" type="number" value="50">
-              <label>Display decimals</label><input id="cf_prec" type="number" value="1">`;
-    case "numbered-substeps":
-      return `<label>First main number</label><input id="cf_first" type="number" value="1">
-              <label>Last main number</label><input id="cf_last" type="number" value="11">
-              <label>Sub-detents between mains</label><input id="cf_subs" type="number" value="2">`;
-    case "rotations-clicks":
-      return `<label>Notation style</label>
-        <div class="seg" id="cf_style"><button data-s="RNT" aria-pressed="true" type="button">R.N.T</button><button data-s="RC" aria-pressed="false" type="button">R.C</button></div>
-        <div id="rnt_cfg">
-          <label style="margin-top:8px">Numbers per rotation</label><input id="cf_npr" type="number" value="10">
-          <label>Ticks per number</label><input id="cf_tpn" type="number" value="4">
-        </div>
-        <div id="rc_cfg" class="hidden"><label style="margin-top:8px">Clicks per rotation</label><input id="cf_cpr" type="number" value="60"></div>
-        <label style="margin-top:8px">Maximum total clicks</label><input id="cf_maxclick" type="number" value="80">`;
-  }
-}
-function readSchemeConfig(w){
-  const sc=w.scheme, err=$("#wzErr");
-  const num=id=>parseFloat($("#"+id).value);
-  try{
-    if(sc.type==="simple-steps"||sc.type==="clicks"){
-      sc.min=Math.round(num("cf_min")); sc.max=Math.round(num("cf_max"));
-      if(sc.max<=sc.min) throw "Max must exceed min.";
-    } else if(sc.type==="stepless"){
-      sc.min=num("cf_min"); sc.max=num("cf_max"); sc.precision=Math.max(0,Math.round(num("cf_prec")));
-      if(sc.max<=sc.min) throw "Max must exceed min.";
-    } else if(sc.type==="numbered-substeps"){
-      sc.firstMain=Math.round(num("cf_first")); sc.lastMain=Math.round(num("cf_last")); sc.subs=Math.round(num("cf_subs"));
-      if(sc.lastMain<=sc.firstMain) throw "Last main must exceed first.";
-      if(sc.subs<0) throw "Sub-steps can't be negative.";
-    } else if(sc.type==="rotations-clicks"){
-      const style=$("#cf_style button[aria-pressed=true]").dataset.s; sc.style=style;
-      if(style==="RNT"){ sc.numbersPerRotation=Math.round(num("cf_npr")); sc.ticksPerNumber=Math.round(num("cf_tpn")); }
-      else { sc.clicksPerRotation=Math.round(num("cf_cpr")); }
-      sc.min=0; sc.max=Math.round(num("cf_maxclick"));
-      if(sc.max<=0) throw "Max clicks must be positive.";
-    }
-    return true;
-  }catch(e){ err.textContent=String(e); return false; }
-}
-function renderCalibForm(w){
-  const box=$("#calibForm"); const R=posRange(w.scheme);
-  const minNat=formatSetting(w.scheme,R.min).replace(" clicks",""), maxNat=formatSetting(w.scheme,R.max).replace(" clicks","");
-  if(w.calibMode==="minmax"){
-    box.innerHTML=`<div class="grid2">
-      <div><label>µm at finest (${esc(minNat)})</label><input id="ca_lo" type="number" value="200"></div>
-      <div><label>µm at coarsest (${esc(maxNat)})</label><input id="ca_hi" type="number" value="1100"></div></div>`;
-  } else if(w.calibMode==="perstep"){
-    box.innerHTML=`<div class="grid2">
-      <div><label>µm at finest (${esc(minNat)})</label><input id="ca_base" type="number" value="200"></div>
-      <div><label>µm per step</label><input id="ca_slope" type="number" value="12"></div></div>
-      <p class="tiny muted">Applied across the full range from the finest setting.</p>`;
-  } else {
-    box.innerHTML=`<p class="tiny muted">One per line: <span class="mono">setting = microns</span> (e.g. <span class="mono">0 = 0</span>). Or use the reference-brew shortcut below.</p>
-      <textarea id="ca_list" placeholder="0 = 0\n${esc(maxNat)} = 1000"></textarea>
-      <label style="margin-top:8px">Reference-brew shortcut</label>
-      <div class="row"><input id="ca_refset" type="text" placeholder="my V60 setting"><select id="ca_refmethod"></select></div>
-      <button class="btn full" id="ca_addref" type="button" style="margin-top:6px">Pin anchor at method midpoint</button>`;
-    const sel=$("#ca_refmethod"); state.methods.forEach(m=>opt(sel,m.name,m.name));
-    sel.value="Pour over / V60";
-    $("#ca_addref").onclick=()=>{
-      const set=$("#ca_refset").value.trim(); const m=state.methods.find(x=>x.name===sel.value);
-      if(set==="") return;
-      const mid=Math.round((m.min+m.max)/2);
-      $("#ca_list").value += (($("#ca_list").value.trim()?"\n":"")+`${set} = ${mid}`);
-    };
-  }
-}
-function finishWizard(w){
-  const err=$("#wzErr"); const R=posRange(w.scheme);
-  let anchors=[];
-  try{
-    if(w.calibMode==="minmax"){
-      const lo=parseFloat($("#ca_lo").value), hi=parseFloat($("#ca_hi").value);
-      if(isNaN(lo)||isNaN(hi)||hi<=lo) throw "Coarsest µm must exceed finest.";
-      anchors=[{position:R.min,microns:lo},{position:R.max,microns:hi}];
-    } else if(w.calibMode==="perstep"){
-      const base=parseFloat($("#ca_base").value), slope=parseFloat($("#ca_slope").value);
-      if(isNaN(base)||isNaN(slope)||slope<=0) throw "Enter a positive µm-per-step.";
-      const span=R.max-R.min;
-      anchors=[{position:R.min,microns:base},{position:R.max,microns:base+slope*span}];
-    } else {
-      const lines=$("#ca_list").value.split("\n").map(l=>l.trim()).filter(Boolean);
-      for(const l of lines){
-        const m=l.split("=").map(x=>x.trim());
-        if(m.length!==2) throw `Bad line: "${l}"`;
-        const p=parseSetting(w.scheme, m[0]); if(!p.ok) throw `"${m[0]}": ${p.error}`;
-        const um=parseFloat(m[1]); if(isNaN(um)||um<0) throw `"${l}" — µm must be positive.`;
-        anchors.push({position:p.pos, microns:um});
-      }
-    }
-    anchors.sort((a,b)=>a.position-b.position);
-    if(anchors.length<2) throw "At least 2 anchors required.";
-    for(let i=1;i<anchors.length;i++){
-      if(anchors[i].position===anchors[i-1].position) throw "Duplicate setting in anchors.";
-      if(anchors[i].microns<=anchors[i-1].microns) throw "Microns must increase with setting.";
-    }
-  }catch(e){ err.textContent=String(e); return; }
-  const g={id:newId(), name:w.name, builtin:false, fav:true, confidence:"estimate",
-           scheme:w.scheme, anchors, brew:{}, brewRanges:{}, notes:"Custom grinder — your own calibration."};
-  state.grinders.push(g); save(); closeModal(); refreshAll();
-  gotoTab("grinders");
-}
-
-/* ---- setup editor ---- */
-function setupModal(existing, idx){
-  const s=existing||{name:"",gid:state.ui.srcId==="microns"?"ode2":state.ui.srcId,setting:state.ui.srcSet,method:"",dose:"",notes:""};
-  const gsel=state.grinders.map(g=>`<option value="${g.id}" ${g.id===s.gid?"selected":""}>${esc(g.name)}</option>`).join("");
-  const msel=`<option value="">—</option>`+state.methods.map(m=>`<option ${m.name===s.method?"selected":""}>${esc(m.name)}</option>`).join("");
-  openModal(`<h2>${existing?"Edit":"Save"} setup <button class="x" data-close type="button">×</button></h2>
-    <label>Recipe name</label><input id="su_name" type="text" value="${esc(s.name)}" placeholder="Morning V60">
-    <label style="margin-top:8px">Grinder</label><select id="su_g">${gsel}</select>
-    <label style="margin-top:8px">Setting</label><input id="su_set" type="text" value="${esc(s.setting)}">
-    <label style="margin-top:8px">Brew method</label><select id="su_m">${msel}</select>
-    <label style="margin-top:8px">Dose / ratio</label><input id="su_dose" type="text" value="${esc(s.dose)}" placeholder="18g : 300g">
-    <label style="margin-top:8px">Notes</label><textarea id="su_notes">${esc(s.notes)}</textarea>
-    <div class="err" id="su_err"></div>
-    <div class="btnrow"><button class="btn primary full" id="su_save" type="button">Save setup</button></div>`);
-  $("#su_save").onclick=()=>{
-    const rec={name:$("#su_name").value.trim()||"Untitled", gid:$("#su_g").value, setting:$("#su_set").value.trim(),
-      method:$("#su_m").value, dose:$("#su_dose").value.trim(), notes:$("#su_notes").value.trim()};
-    if(idx!=null) state.setups[idx]=rec; else state.setups.push(rec);
-    save(); closeModal(); renderSetups();
-  };
+function loadSetup(s){
+  if(!grinderById(s.gid)) return;
+  state.ui.srcId=s.gid; state.ui.pos=s.pos;
+  if(state.methods.some(m=>m.name===s.mid)) state.ui.methodId=s.mid;
+  save();
+  vm.screen="brew"; vm.mode="convert";
+  renderScreens(); renderConvert();
+  toast("Loaded "+s.name);
 }
 
 /* ============================================================
-   EXPORT / IMPORT / WIPE
+   LIBRARY — Grinders
    ============================================================ */
-function exportData(){
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download="grist-backup.json"; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+function renderGrinders(){
+  const list=$("#grindersList");
+  list.innerHTML = state.grinders.map(g=>{
+    const mr=micronRange(g);
+    return `<div class="entryRow ${g.id===state.ui.srcId?"selected":""}">
+      <button type="button" class="main" data-pickg="${g.id}">
+        <div class="nameLine"><span class="n">${esc(g.name)}</span>${confBadgeHtml(g)}</div>
+        <span class="range">${esc(nativeFmt(g.scheme, posRange(g.scheme).min))}–${esc(nativeFmt(g.scheme, posRange(g.scheme).max))} ${esc(schemeUnitWord(g.scheme))} · ${Math.round(mr.lo)}–${Math.round(mr.hi)} µm</span>
+      </button>
+      <div class="actions">
+        <button type="button" class="miniBtn rose" data-calibrate="${g.id}">Calibrate</button>
+        <button type="button" class="miniBtn" data-editg="${g.id}">Edit</button>
+        <button type="button" class="miniBtn danger" data-removeg="${g.id}">Remove</button>
+      </div>
+    </div>`;
+  }).join("");
 }
-function importData(file){
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      const s=JSON.parse(r.result);
-      if(!s.schemaVersion||!Array.isArray(s.grinders)) throw "Not a Grist backup.";
-      if(s.schemaVersion!==SCHEMA_VERSION) throw "Different schema version.";
-      state=s; save(); refreshAll();
-      alert("Imported successfully.");
-    }catch(e){ alert("Import failed: "+e); }
-  };
-  r.readAsText(file);
+function pickGrinder(id){
+  const g=grinderById(id); if(!g) return;
+  state.ui.srcId=id; state.ui.pos=clampPos(g.scheme, state.ui.pos);
+  save();
+  vm.screen="brew"; renderScreens(); renderConvert();
+  toast(shortGrinderName(g)+" selected");
 }
-
-/* ============================================================
-   TABS + WIRING
-   ============================================================ */
-function gotoTab(name){
-  $$("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===name));
-  $$("section.tab").forEach(s=>s.classList.toggle("active", s.id==="tab-"+name));
-  if(name==="targets"){ renderTargets(); renderMultiTarget(); }
-  if(name==="dialin") renderDialIn();
-  if(name==="grinders") renderGrinders();
-  if(name==="setups") renderSetups();
-  if(name==="convert") renderConvert();
-  window.scrollTo(0,0);
-}
-function refreshAll(){
-  refreshConverterPickers();
-  renderTargets(); renderMultiTarget(); renderDialIn(); renderGrinders(); renderSetups();
-}
-
-function wireStatic(){
-  // tabs
-  $$("nav.tabs button").forEach(b=>b.onclick=()=>gotoTab(b.dataset.tab));
-  // converter
-  $("#srcG").onchange=e=>{ state.ui.srcId=e.target.value; updateSrcMeta(); renderConvert(); };
-  $("#tgtG").onchange=e=>{ state.ui.tgtId=e.target.value; updateTgtMeta(); renderConvert(); };
-  $("#srcSet").oninput=renderConvert;
-  $("#srcRange").oninput=onSliderInput;
-  $("#srcMinus").onclick=()=>stepSource(-1);
-  $("#srcPlus").onclick=()=>stepSource(1);
-  $("#swapBtn").onclick=()=>{
-    const a=state.ui.srcId, b=state.ui.tgtId;
-    // compute current source µm, put target native as new source
-    const src=readSource();
-    state.ui.srcId=b; state.ui.tgtId=a;
-    grinderOptions($("#srcG"),state.ui.srcId); grinderOptions($("#tgtG"),state.ui.tgtId);
-    if(src.ok){
-      if(isMicron(b)) $("#srcSet").value=Math.round(src.um);
-      else { const g=grinderById(b); const r=micronToTarget(g,src.um); $("#srcSet").value=r.native.replace(" clicks",""); }
-    }
-    updateSrcMeta(); updateTgtMeta(); renderConvert();
-  };
-  // note links (delegated)
-  document.body.addEventListener("click",e=>{
-    const nl=e.target.closest("[data-note]"); if(nl){ e.preventDefault(); noteModal(grinderById(nl.dataset.note)); }
-    if(e.target.matches("[data-close]")) closeModal();
-    if(e.target.matches("[data-delrow]")) e.target.closest(".anchorRow").remove();
-  });
-  $("#favHint").onclick=()=>gotoTab("grinders");
-  // targets
-  $("#tgtMethodG").onchange=e=>{ targetsSel.gid=e.target.value; renderTargets(); };
-  $("#sendToConv").onclick=()=>{
-    const g=grinderById(targetsSel.gid); const r=grinderMethodRange(g,targetsSel.method);
-    if(!r) return;
-    state.ui.srcId=g.id; state.ui.srcSet=formatSetting(g.scheme,micronToTarget(g,r.midUm).pos).replace(" clicks","");
-    refreshConverterPickers(); $("#srcSet").value=state.ui.srcSet; renderConvert(); gotoTab("convert");
-  };
-  $("#mtG").onchange=e=>{ mtSel.gid=e.target.value; renderMultiTarget(); };
-  $("#mtSet").oninput=renderMultiTarget;
-  // dial in
-  $("#diG").onchange=e=>{ diSel.gid=e.target.value; renderDialIn(); };
-  $("#diSet").oninput=renderDialIn;
-  $$("#diTaste button").forEach(b=>b.onclick=()=>{ diSel.taste=b.dataset.t; renderDialIn(); });
-  // grinders (delegated)
-  $("#grinderList").addEventListener("click",e=>{
-    const t=e.target;
-    if(t.dataset.fav){ const g=grinderById(t.dataset.fav); g.fav=!g.fav; save(); renderGrinders(); refreshConverterPickers(); }
-    if(t.dataset.editanchor) anchorModal(grinderById(t.dataset.editanchor));
-    if(t.dataset.reset){ const g=grinderById(t.dataset.reset); resetGrinder(g); }
-    if(t.dataset.editg) renameModal(grinderById(t.dataset.editg));
-    if(t.dataset.delg){ if(confirm("Delete this grinder?")){ state.grinders=state.grinders.filter(x=>x.id!==t.dataset.delg); save(); refreshAll(); } }
-  });
-  $("#addGrinder").onclick=wizardModal;
-  // setups
-  $("#addSetup").onclick=()=>setupModal(null,null);
-  $("#setupList").addEventListener("click",e=>{
-    const t=e.target;
-    if(t.dataset.loadsetup!=null){ loadSetup(state.setups[+t.dataset.loadsetup]); }
-    if(t.dataset.delsetup!=null){ if(confirm("Delete setup?")){ state.setups.splice(+t.dataset.delsetup,1); save(); renderSetups(); } }
-  });
-  // data mgmt
-  $("#exportBtn").onclick=exportData;
-  $("#importBtn").onclick=()=>$("#importFile").click();
-  $("#importFile").onchange=e=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; };
-  $("#wipeBtn").onclick=()=>{ if(confirm("Erase all custom grinders, edits, and setups?")){ localStorage.removeItem(STORE_KEY); state=defaultState(); save(); refreshAll(); gotoTab("convert"); } };
+function removeGrinder(id){
+  if(state.grinders.length<2){ toast("Keep at least one grinder"); return; }
+  const g=grinderById(id); if(!g) return;
+  state.grinders = state.grinders.filter(x=>x.id!==id);
+  const rest=state.grinders;
+  if(state.ui.srcId===id) state.ui.srcId=rest[0].id;
+  if(state.ui.tgtId===id) state.ui.tgtId=(rest.find(x=>x.id!==state.ui.srcId)||rest[0]).id;
+  state.ui.pos=clampPos(grinderById(state.ui.srcId).scheme, state.ui.pos);
+  save(); renderAll();
+  toast(shortGrinderName(g)+" removed");
 }
 function resetGrinder(g){
   const seed=SEED_GRINDERS.find(s=>s.id===g.seedId); if(!seed) return;
   const fresh=freshGrinderFromSeed(seed); fresh.fav=g.fav;
   const i=state.grinders.findIndex(x=>x.id===g.id);
-  state.grinders[i]=fresh; save(); refreshAll();
-}
-function loadSetup(s){
-  if(!s) return;
-  if(grinderById(s.gid)){ state.ui.srcId=s.gid; state.ui.srcSet=s.setting; }
-  refreshConverterPickers(); $("#srcSet").value=state.ui.srcSet; renderConvert(); gotoTab("convert");
+  state.grinders[i]=fresh; save(); renderAll();
+  toast(shortGrinderName(fresh)+" reset to defaults");
 }
 
 /* ============================================================
-   INIT
+   LIBRARY — Brewers (existing state.methods)
    ============================================================ */
-function initFooterAndDisclaimer(){
-  $("#appFooter").innerHTML=
-    `Grist ${APP_VERSION} · by <b>soyboycore</b> · `+
-    `<a href="https://github.com/soyboycore/grist" target="_blank" rel="noopener">source on GitHub</a><br>`+
-    `Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates — dial in by taste. MIT licensed.`;
-  $("#mainDisclaimer").innerHTML=
-    `<b>Results are starting points.</b> Burr wear, alignment, zero-point drift, and bean density mean the final 10% is dialed by taste. `+
-    `Hand grinders measure clicks from burrs touching — that zero point varies unit to unit, so recalibrate the 0 anchor to your grinder.`;
+function renderBrewers(){
+  const list=$("#brewersList");
+  list.innerHTML = state.methods.map((m,i)=>{
+    return `<div class="entryRow ${m.name===state.ui.methodId?"selected":""}">
+      <button type="button" class="main" data-pickb="${i}" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span><span class="n" style="display:block">${esc(m.name)}</span><span class="range" style="margin-top:2px">${esc(CATS.find(c=>c.id===methodCategory(m)).name)}</span></span>
+        <span class="band">${m.min}–${m.max} µm</span>
+      </button>
+      <div class="actions">
+        <button type="button" class="miniBtn" data-editb="${i}">Edit</button>
+        <button type="button" class="miniBtn danger" data-removeb="${i}">Remove</button>
+      </div>
+    </div>`;
+  }).join("");
 }
-function initFirstRun(){
-  const hint=$("#firstRunHint");
-  if(state.ui.firstRun){
-    hint.innerHTML=`👋 <b>Worked example loaded:</b> Fellow Ode Gen 2 “3” → Comandante C40. Change either grinder or setting — it converts instantly, no button.`;
-    state.ui.firstRun=false; save();
+function pickBrewer(i){
+  const m=state.methods[i]; if(!m) return;
+  state.ui.methodId=m.name; vm.cat=methodCategory(m); save();
+  vm.screen="brew"; vm.mode="convert"; renderScreens(); renderConvert();
+  toast(m.name+" selected");
+}
+function removeBrewer(i){
+  if(state.methods.length<2){ toast("Keep at least one brewer"); return; }
+  const m=state.methods[i]; if(!m) return;
+  state.methods.splice(i,1);
+  if(state.ui.methodId===m.name) state.ui.methodId=state.methods[0].name;
+  save(); renderAll();
+  toast(m.name+" removed");
+}
+
+/* ============================================================
+   LIBRARY nav + about box
+   ============================================================ */
+function renderLibrary(){
+  $$("#libSeg button").forEach(b=>b.classList.toggle("on", b.dataset.libtab===vm.libTab));
+  $("#panelSetups").classList.toggle("hidden", vm.libTab!=="setups");
+  $("#panelGrinders").classList.toggle("hidden", vm.libTab!=="grinders");
+  $("#panelBrewers").classList.toggle("hidden", vm.libTab!=="brewers");
+  if(vm.libTab==="setups") renderSetups();
+  if(vm.libTab==="grinders") renderGrinders();
+  if(vm.libTab==="brewers") renderBrewers();
+}
+function renderAbout(){
+  $("#aboutBox").innerHTML =
+    `Grist ${APP_VERSION} · by <b>soyboycore</b> · <a href="https://github.com/soyboycore/grist" target="_blank" rel="noopener">source on GitHub</a><br>`+
+    `Calibration ranges based on published data from Honest Coffee Guide (honestcoffeeguide.com) and manufacturer manuals; values are community estimates until you calibrate — dial in by taste. MIT licensed.`;
+}
+
+/* ============================================================
+   CALIBRATE
+   ============================================================ */
+function openCalibrate(gid){
+  const g=grinderById(gid); if(!g) return;
+  vm.calId=gid;
+  const a=sortedAnchors(g);
+  vm.calLo=String(Math.round(a[0].microns));
+  vm.calHi=String(Math.round(a[a.length-1].microns));
+  vm.screen="calibrate";
+  renderScreens(); renderCalibrate();
+}
+function renderCalibrate(){
+  const g=grinderById(vm.calId); if(!g) return;
+  $("#calName").textContent=g.name;
+  const badge=$("#calBadgeEl");
+  const measured = isMeasured(g);
+  badge.textContent = g.calibrated ? "Measured by you" : (measured ? "Verified source" : "Published estimate");
+  badge.style.background = measured ? "var(--good-bg)" : "rgba(255,255,255,.5)";
+  badge.style.color = measured ? "var(--good-ink)" : "rgba(42,26,16,.8)";
+  const R=posRange(g.scheme);
+  $("#calRangeEl").textContent = `${nativeFmt(g.scheme,R.min)}–${nativeFmt(g.scheme,R.max)} ${schemeUnitWord(g.scheme)}`;
+  $("#calLoField").value=vm.calLo;
+  $("#calHiField").value=vm.calHi;
+  $("#calErr").textContent="";
+}
+function saveCalibration(){
+  const g=grinderById(vm.calId); if(!g) return;
+  const lo=parseFloat($("#calLoField").value), hi=parseFloat($("#calHiField").value);
+  if(isNaN(lo)||isNaN(hi)||hi<=lo){ $("#calErr").textContent="Coarsest must exceed finest."; return; }
+  const a=sortedAnchors(g);
+  a[0].microns=lo; a[a.length-1].microns=hi;
+  g.anchors=a; g.calibrated=true; g.confidence="verified";
+  save();
+  vm.screen="library"; vm.libTab="grinders";
+  renderScreens(); renderAll();
+  toast(shortGrinderName(g)+" calibrated");
+}
+
+/* ---- advanced: full anchor list (needed for non-linear / >2-anchor grinders) ---- */
+function anchorRowHtml(g,a){
+  const nat = a.nativeGuess!==undefined ? a.nativeGuess : nativeFmt(g.scheme, a.position);
+  return `<div class="anchorRow">
+    <input data-nat type="text" inputmode="decimal" placeholder="setting" value="${esc(nat)}">
+    <input data-um type="text" inputmode="decimal" placeholder="µm" value="${a.microns===""?"":esc(a.microns)}">
+    <button type="button" class="x" data-delanchor aria-label="remove">×</button>
+  </div>`;
+}
+function openAdvancedAnchors(){
+  const g=grinderById(vm.calId); if(!g) return;
+  $("#anchorSheetTitle").textContent="Calibrate "+g.name;
+  const rows=$("#anchorRows");
+  rows.innerHTML = sortedAnchors(g).map(a=>anchorRowHtml(g,a)).join("");
+  $("#anchorSheetErr").textContent="";
+  openSheet("anchorSheetScrim");
+}
+function saveAdvancedAnchors(){
+  const g=grinderById(vm.calId); if(!g) return;
+  const anchors=[];
+  for(const row of $$("#anchorRows .anchorRow")){
+    const nat=row.querySelector("[data-nat]").value.trim();
+    const um=parseFloat(row.querySelector("[data-um]").value);
+    if(nat===""&&isNaN(um)) continue;
+    const p=parseSetting(g.scheme, nat);
+    if(!p.ok){ $("#anchorSheetErr").textContent=`Setting "${nat}": ${p.error}`; return; }
+    if(isNaN(um)||um<0){ $("#anchorSheetErr").textContent=`Microns for "${nat}" must be a positive number.`; return; }
+    anchors.push({position:p.pos, microns:um});
+  }
+  if(anchors.length<2){ $("#anchorSheetErr").textContent="At least 2 anchors required."; return; }
+  anchors.sort((a,b)=>a.position-b.position);
+  for(let i=1;i<anchors.length;i++){
+    if(anchors[i].position===anchors[i-1].position){ $("#anchorSheetErr").textContent="Two anchors share the same setting."; return; }
+    if(anchors[i].microns<=anchors[i-1].microns){ $("#anchorSheetErr").textContent="Microns must increase with the setting."; return; }
+  }
+  g.anchors=anchors; g.calibrated=true; g.confidence="verified";
+  save(); closeSheet("anchorSheetScrim");
+  vm.screen="library"; vm.libTab="grinders";
+  renderScreens(); renderAll();
+  toast(shortGrinderName(g)+" calibrated");
+}
+
+/* ============================================================
+   SHEETS — generic open/close
+   ============================================================ */
+function openSheet(id){ $("#"+id).classList.add("open"); }
+function closeSheet(id){ $("#"+id).classList.remove("open"); }
+
+/* ---- method sheet ---- */
+function openMethodSheet(){
+  vm.cat = methodCategory(currentMethod());
+  renderMethodSheet();
+  openSheet("methodSheetScrim");
+}
+function renderMethodSheet(){
+  const seg=$("#methodSheetCatSeg"); seg.innerHTML="";
+  CATS.forEach(c=>{
+    const b=document.createElement("button"); b.type="button"; b.textContent=c.name;
+    b.className = c.id===vm.cat ? "on":"";
+    b.onclick=()=>{ vm.cat=c.id; renderMethodSheet(); };
+    seg.appendChild(b);
+  });
+  const list=$("#methodSheetList"); list.innerHTML="";
+  state.methods.filter(m=>methodCategory(m)===vm.cat).forEach(m=>{
+    const b=document.createElement("button"); b.type="button";
+    b.className="methodSheetRow"+(m.name===state.ui.methodId?" on":"");
+    b.innerHTML=`<span>${esc(m.name)}</span><span class="b2 mono">${m.min}–${m.max} µm</span>`;
+    b.onclick=()=>{ state.ui.methodId=m.name; save(); closeSheet("methodSheetScrim"); renderConvert(); };
+    list.appendChild(b);
+  });
+}
+
+/* ---- save dial-in sheet ---- */
+function openSaveSheet(){
+  const src=currentSrc(), m=currentMethod();
+  vm.saveName = shortMethodName(m)+" · "+shortGrinderName(src);
+  $("#saveSheetSub").textContent = `${shortGrinderName(src)} · ${nativeFmt(src.scheme,state.ui.pos)} ${schemeUnitWord(src.scheme)} · ${m.name} · ${Math.round(currentUm())} µm`;
+  $("#saveNameField").value="";
+  openSheet("saveSheetScrim");
+}
+function confirmSaveSetup(){
+  const src=currentSrc(), m=currentMethod();
+  const typed=$("#saveNameField").value.trim();
+  const name = typed || (shortMethodName(m)+" · "+shortGrinderName(src));
+  state.setups = [{id:newId(), name, gid:src.id, pos:state.ui.pos, mid:m.name}].concat(state.setups);
+  save(); closeSheet("saveSheetScrim");
+  toast("Saved to Library");
+}
+
+/* ============================================================
+   ADD / EDIT GRINDER SHEET — reuses the full 5-scheme codec, restyled to
+   match the glass-sheet language. (The prototype's version only offers two
+   simplified notations; the app's actual data model supports five, and
+   losing that would break real grinders like the Fellow Ode's numbered
+   sub-steps or the 1Zpresso rotation.click formats — see hard constraint #2.)
+   ============================================================ */
+const SCHEME_DEFS = [
+  {t:"simple-steps", label:"Numbered steps", ex:"Baratza Encore · 18", desc:"Whole-number dial, step 1."},
+  {t:"clicks", label:"Clicks from zero", ex:"Comandante · 24 clicks", desc:"Count clicks from burrs touching."},
+  {t:"numbered-substeps", label:"Numbered + sub-steps", ex:"Fellow Ode · 3.2", desc:"Main numbers with detents between."},
+  {t:"rotations-clicks", label:"Rotations + clicks", ex:"1Zpresso · 1.3.2", desc:"Multiple turns of a dial."},
+  {t:"stepless", label:"Stepless", ex:"Niche Zero · 17.3", desc:"Continuous, no detents."},
+];
+function openAddGrinder(gid){
+  vm.editG = gid || null;
+  if(gid){
+    const g=grinderById(gid);
+    const R=posRange(g.scheme), a=sortedAnchors(g);
+    vm.draft = { name:g.name, type:g.scheme.type, fields:schemeToFields(g.scheme),
+      lo:String(Math.round(a[0].microns)), hi:String(Math.round(a[a.length-1].microns)) };
+    $("#addSheetTitle").textContent="Edit grinder";
   } else {
-    hint.remove();
+    vm.draft = { name:"", type:null, fields:{}, lo:"", hi:"" };
+    $("#addSheetTitle").textContent="Add a grinder";
+  }
+  renderAddSheet();
+  openSheet("addSheetScrim");
+}
+function schemeToFields(sc){
+  switch(sc.type){
+    case "simple-steps": case "clicks": return {min:String(sc.min), max:String(sc.max)};
+    case "stepless": return {min:String(sc.min), max:String(sc.max), precision:String(sc.precision||1)};
+    case "numbered-substeps": return {firstMain:String(sc.firstMain), lastMain:String(sc.lastMain), subs:String(sc.subs)};
+    case "rotations-clicks": return sc.style==="RNT"
+      ? {style:"RNT", numbersPerRotation:String(sc.numbersPerRotation), ticksPerNumber:String(sc.ticksPerNumber), max:String(sc.max)}
+      : {style:"RC", clicksPerRotation:String(sc.clicksPerRotation), max:String(sc.max)};
   }
 }
+function renderAddSheet(){
+  const d=vm.draft;
+  $("#draftName").value=d.name;
+  $("#draftName").oninput=e=>{ d.name=e.target.value; };
+
+  const grid=$("#draftTypeGrid"), locked=$("#draftTypeLocked"), label=$("#draftTypeLabel");
+  if(vm.editG){
+    grid.classList.add("hidden"); label.classList.add("hidden");
+    locked.classList.remove("hidden");
+    locked.textContent = "Notation: " + (SCHEME_DEFS.find(s=>s.t===d.type)||{label:d.type}).label + " (can't be changed after creation)";
+    renderSchemeFields(d.type, d.fields);
+  } else {
+    grid.classList.remove("hidden"); label.classList.remove("hidden");
+    locked.classList.add("hidden");
+    grid.innerHTML="";
+    SCHEME_DEFS.forEach(s=>{
+      const b=document.createElement("button"); b.type="button"; b.className="typeBtn"+(d.type===s.t?" on":"");
+      b.innerHTML=`${esc(s.label)}<small>${esc(s.ex)}</small>`;
+      b.onclick=()=>{ d.type=s.t; d.fields=defaultFieldsFor(s.t); renderAddSheet(); };
+      grid.appendChild(b);
+    });
+    renderSchemeFields(d.type, d.fields);
+  }
+  $("#draftLo").value=d.lo; $("#draftLo").oninput=e=>{ d.lo=e.target.value; updateAddCta(); };
+  $("#draftHi").value=d.hi; $("#draftHi").oninput=e=>{ d.hi=e.target.value; updateAddCta(); };
+  $("#addSheetErr").textContent="";
+  updateAddCta();
+}
+function defaultFieldsFor(type){
+  switch(type){
+    case "simple-steps": case "clicks": return {min:"0", max:"40"};
+    case "stepless": return {min:"0", max:"50", precision:"1"};
+    case "numbered-substeps": return {firstMain:"1", lastMain:"11", subs:"2"};
+    case "rotations-clicks": return {style:"RNT", numbersPerRotation:"10", ticksPerNumber:"4", max:"80"};
+  }
+}
+function renderSchemeFields(type, fields){
+  const box=$("#draftSchemeFields");
+  if(!type){ box.innerHTML=""; return; }
+  const upd=(k)=>e=>{ fields[k]=e.target.value; };
+  if(type==="simple-steps"||type==="clicks"){
+    box.innerHTML=`<div class="fieldGrid" style="margin-top:14px">
+      <div><div class="fieldLabel">Minimum setting</div><input type="text" inputmode="numeric" class="field" id="fMin" value="${esc(fields.min)}"></div>
+      <div><div class="fieldLabel">Maximum setting</div><input type="text" inputmode="numeric" class="field" id="fMax" value="${esc(fields.max)}"></div>
+    </div>`;
+    $("#fMin").oninput=upd("min"); $("#fMax").oninput=upd("max");
+  } else if(type==="stepless"){
+    box.innerHTML=`<div class="fieldGrid" style="margin-top:14px">
+      <div><div class="fieldLabel">Minimum</div><input type="text" inputmode="numeric" class="field" id="fMin" value="${esc(fields.min)}"></div>
+      <div><div class="fieldLabel">Maximum</div><input type="text" inputmode="numeric" class="field" id="fMax" value="${esc(fields.max)}"></div>
+    </div>
+    <div class="fieldLabel" style="margin-top:12px">Display decimals</div>
+    <input type="text" inputmode="numeric" class="field" id="fPrec" value="${esc(fields.precision)}">`;
+    $("#fMin").oninput=upd("min"); $("#fMax").oninput=upd("max"); $("#fPrec").oninput=upd("precision");
+  } else if(type==="numbered-substeps"){
+    box.innerHTML=`<div class="fieldGrid" style="margin-top:14px">
+      <div><div class="fieldLabel">First main number</div><input type="text" inputmode="numeric" class="field" id="fFirst" value="${esc(fields.firstMain)}"></div>
+      <div><div class="fieldLabel">Last main number</div><input type="text" inputmode="numeric" class="field" id="fLast" value="${esc(fields.lastMain)}"></div>
+    </div>
+    <div class="fieldLabel" style="margin-top:12px">Sub-detents between mains</div>
+    <input type="text" inputmode="numeric" class="field" id="fSubs" value="${esc(fields.subs)}">`;
+    $("#fFirst").oninput=upd("firstMain"); $("#fLast").oninput=upd("lastMain"); $("#fSubs").oninput=upd("subs");
+  } else if(type==="rotations-clicks"){
+    const isRNT = fields.style!=="RC";
+    box.innerHTML=`<div class="typeGrid" style="margin-top:14px">
+      <button type="button" class="typeBtn${isRNT?" on":""}" id="fStyleRNT">R.N.T<small>1.3.2</small></button>
+      <button type="button" class="typeBtn${!isRNT?" on":""}" id="fStyleRC">R.C<small>2.42</small></button>
+    </div>
+    <div id="fRntBox" class="${isRNT?"":"hidden"}">
+      <div class="fieldGrid" style="margin-top:12px">
+        <div><div class="fieldLabel">Numbers/rotation</div><input type="text" inputmode="numeric" class="field" id="fNpr" value="${esc(fields.numbersPerRotation||"10")}"></div>
+        <div><div class="fieldLabel">Ticks/number</div><input type="text" inputmode="numeric" class="field" id="fTpn" value="${esc(fields.ticksPerNumber||"4")}"></div>
+      </div>
+    </div>
+    <div id="fRcBox" class="${isRNT?"hidden":""}">
+      <div class="fieldLabel" style="margin-top:12px">Clicks/rotation</div>
+      <input type="text" inputmode="numeric" class="field" id="fCpr" value="${esc(fields.clicksPerRotation||"60")}">
+    </div>
+    <div class="fieldLabel" style="margin-top:12px">Maximum total clicks</div>
+    <input type="text" inputmode="numeric" class="field" id="fMaxClick" value="${esc(fields.max)}">`;
+    $("#fStyleRNT").onclick=()=>{ fields.style="RNT"; renderSchemeFields(type, fields); };
+    $("#fStyleRC").onclick=()=>{ fields.style="RC"; renderSchemeFields(type, fields); };
+    const npr=$("#fNpr"), tpn=$("#fTpn"), cpr=$("#fCpr"), mc=$("#fMaxClick");
+    if(npr) npr.oninput=upd("numbersPerRotation"); if(tpn) tpn.oninput=upd("ticksPerNumber");
+    if(cpr) cpr.oninput=upd("clicksPerRotation"); mc.oninput=upd("max");
+  }
+}
+function updateAddCta(){
+  const d=vm.draft;
+  $("#addSheetSaveBtn").textContent = (d.lo && d.hi) ? "Add with my anchors" : "Add — borrow anchors for now";
+}
+function buildSchemeFromDraft(d){
+  const f=d.fields, num=v=>parseFloat(v);
+  if(d.type==="simple-steps"||d.type==="clicks"){
+    const min=Math.round(num(f.min)), max=Math.round(num(f.max));
+    if(isNaN(min)||isNaN(max)||max<=min) throw "Max must exceed min.";
+    return {type:d.type, min, max};
+  }
+  if(d.type==="stepless"){
+    const min=num(f.min), max=num(f.max), precision=Math.max(0,Math.round(num(f.precision)));
+    if(isNaN(min)||isNaN(max)||max<=min) throw "Max must exceed min.";
+    return {type:"stepless", min, max, precision};
+  }
+  if(d.type==="numbered-substeps"){
+    const firstMain=Math.round(num(f.firstMain)), lastMain=Math.round(num(f.lastMain)), subs=Math.round(num(f.subs));
+    if(isNaN(firstMain)||isNaN(lastMain)||lastMain<=firstMain) throw "Last main must exceed first.";
+    if(isNaN(subs)||subs<0) throw "Sub-steps can't be negative.";
+    return {type:"numbered-substeps", firstMain, lastMain, subs};
+  }
+  if(d.type==="rotations-clicks"){
+    const style=f.style==="RC"?"RC":"RNT";
+    const max=Math.round(num(f.max));
+    if(isNaN(max)||max<=0) throw "Max clicks must be positive.";
+    if(style==="RNT"){
+      const numbersPerRotation=Math.round(num(f.numbersPerRotation)), ticksPerNumber=Math.round(num(f.ticksPerNumber));
+      return {type:"rotations-clicks", style, numbersPerRotation, ticksPerNumber, min:0, max};
+    }
+    const clicksPerRotation=Math.round(num(f.clicksPerRotation));
+    return {type:"rotations-clicks", style, clicksPerRotation, min:0, max};
+  }
+  throw "Pick how the grinder adjusts.";
+}
+function saveAddGrinder(){
+  const d=vm.draft, err=$("#addSheetErr");
+  if(!d.name.trim()){ err.textContent="Name needed."; return; }
+  if(!vm.editG && !d.type){ err.textContent="Pick how the grinder adjusts."; return; }
+  let scheme;
+  try{ scheme = vm.editG ? Object.assign({type:d.type}, buildSchemeFromDraft(d)) : buildSchemeFromDraft(d); }
+  catch(e){ err.textContent=String(e); return; }
+  const lo=parseFloat(d.lo), hi=parseFloat(d.hi);
+  const anchored = !isNaN(lo) && !isNaN(hi) && hi>lo;
+
+  if(vm.editG){
+    const g=grinderById(vm.editG);
+    g.name=d.name.trim(); g.scheme=scheme;
+    if(anchored){
+      g.anchors=[{position:posRange(scheme).min,microns:lo},{position:posRange(scheme).max,microns:hi}];
+      g.calibrated=true; g.confidence="verified";
+    } else {
+      g.anchors = g.anchors.map(a=>({position:clampPos(scheme,a.position), microns:a.microns}));
+    }
+    state.ui.pos = clampPos(scheme, state.ui.pos);
+    save(); closeSheet("addSheetScrim"); renderAll();
+    toast(g.name+" updated");
+    return;
+  }
+  const g={
+    id:newId(), name:d.name.trim(), builtin:false, fav:false, confidence: anchored?"verified":"estimate",
+    calibrated:anchored, scheme,
+    anchors: anchored ? [{position:posRange(scheme).min,microns:lo},{position:posRange(scheme).max,microns:hi}]
+                       : [{position:posRange(scheme).min,microns:200},{position:posRange(scheme).max,microns:1200}],
+    brew:{}, brewRanges:{}, notes:"Custom grinder — your own calibration."
+  };
+  state.grinders.push(g);
+  state.ui.srcId=g.id; state.ui.pos=posRange(scheme).min;
+  save(); closeSheet("addSheetScrim");
+  vm.screen="brew"; vm.mode="convert";
+  renderScreens(); renderAll();
+  toast(g.name+" added");
+}
+
+/* ============================================================
+   BREWER SHEET (existing state.methods)
+   ============================================================ */
+function openBrewerSheet(idx){
+  vm.editB = (idx===undefined) ? null : idx;
+  if(vm.editB!=null){
+    const m=state.methods[idx];
+    vm.bDraft={ name:m.name, cat:methodCategory(m), lo:String(m.min), hi:String(m.max) };
+    $("#brewerSheetTitle").textContent="Edit brewer";
+  } else {
+    vm.bDraft={ name:"", cat:"pour", lo:"", hi:"" };
+    $("#brewerSheetTitle").textContent="Add a brewer";
+  }
+  renderBrewerSheet();
+  openSheet("brewerSheetScrim");
+}
+function renderBrewerSheet(){
+  const d=vm.bDraft;
+  $("#bDraftName").value=d.name; $("#bDraftName").oninput=e=>{ d.name=e.target.value; };
+  const grid=$("#bDraftCatGrid"); grid.innerHTML="";
+  CATS.forEach(c=>{
+    const b=document.createElement("button"); b.type="button"; b.className="typeBtn"+(d.cat===c.id?" on":"");
+    b.textContent=c.name;
+    b.onclick=()=>{ d.cat=c.id; renderBrewerSheet(); };
+    grid.appendChild(b);
+  });
+  $("#bDraftLo").value=d.lo; $("#bDraftLo").oninput=e=>{ d.lo=e.target.value; };
+  $("#bDraftHi").value=d.hi; $("#bDraftHi").oninput=e=>{ d.hi=e.target.value; };
+  $("#brewerSheetErr").textContent="";
+}
+function saveBrewer(){
+  const d=vm.bDraft, err=$("#brewerSheetErr");
+  const lo=parseFloat(d.lo), hi=parseFloat(d.hi);
+  if(!d.name.trim()||isNaN(lo)||isNaN(hi)||hi<=lo){ err.textContent="Name and a µm range needed (coarsest must exceed finest)."; return; }
+  if(vm.editB!=null){
+    const m=state.methods[vm.editB];
+    const oldName=m.name;
+    m.name=d.name.trim(); m.min=lo; m.max=hi; m.cat=d.cat;
+    if(state.ui.methodId===oldName) state.ui.methodId=m.name;
+    state.setups.forEach(s=>{ if(s.mid===oldName) s.mid=m.name; });
+    save(); closeSheet("brewerSheetScrim"); renderAll();
+    toast(m.name+" updated");
+    return;
+  }
+  const m={name:d.name.trim(), min:lo, max:hi, cat:d.cat, custom:true};
+  state.methods.push(m);
+  state.ui.methodId=m.name; vm.cat=d.cat;
+  save(); closeSheet("brewerSheetScrim");
+  renderAll();
+  toast(m.name+" added");
+}
+
+/* ============================================================
+   KITCHEN VIEW — oversized takeover with the rotary dial
+   ============================================================ */
+function openKitchen(){
+  vm.kitchen=true; vm.kitchenClosing=false;
+  const k=$("#kitchen");
+  k.classList.remove("leave"); k.classList.add("open","enter");
+  renderKitchen();
+  maybeRequestTiltPermission();
+}
+function closeKitchen(){
+  vm.kitchenClosing=true;
+  const k=$("#kitchen");
+  k.classList.remove("enter"); k.classList.add("leave");
+  clearTimeout(kitchenTimer);
+  kitchenTimer=setTimeout(()=>{ vm.kitchen=false; vm.kitchenClosing=false; k.classList.remove("open","leave"); }, 250);
+}
+function renderKitchen(){
+  const src=currentSrc(), tgt=currentTgt();
+  const um=currentUm();
+  const r=micronToTarget(tgt, um);
+  const tol=targetTolerance(tgt, r.pos);
+  $("#kName").textContent=tgt.name;
+  $("#kVal").textContent=nativeFmt(tgt.scheme, r.pos);
+  $("#kSub").textContent=`${schemeUnitWord(tgt.scheme)} · ${Math.round(r.micron)} µm ±${Math.round(tol)}`;
+  $("#kHubVal").textContent=nativeFmt(src.scheme, state.ui.pos);
+  $("#kHubUnit").textContent=schemeUnitWord(src.scheme);
+  $("#kHubShort").textContent=shortGrinderName(src);
+
+  const R=posRange(src.scheme);
+  const frac=(state.ui.pos-R.min)/(R.max-R.min || 1);
+  const rot=frac*300-150;
+  $("#dialPip").style.transform=`translate(-50%,-50%) rotate(${rot}deg) translateY(-84px)`;
+
+  const ticks=$("#dialTicks");
+  if(ticks.childElementCount!==49){
+    ticks.innerHTML="";
+    for(let i=0;i<49;i++){ const d=document.createElement("div"); d.className="tick"; ticks.appendChild(d); }
+  }
+  Array.from(ticks.children).forEach((el,i)=>{
+    const f=i/48, major=i%6===0, active=f<=frac;
+    const tr=-150+f*300;
+    el.style.width=(major?2.5:1.5)+"px";
+    el.style.height=(major?16:9)+"px";
+    el.style.background = active ? "var(--accent)" : "rgba(42,26,16,.28)";
+    el.style.transform=`translate(-50%,-50%) rotate(${tr}deg) translateY(-108px)`;
+  });
+}
+function dialAngle(e, el){
+  const r=el.getBoundingClientRect();
+  return Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2)) * 180/Math.PI;
+}
+function dialPointerDown(e){
+  const el=$("#dial");
+  el.setPointerCapture(e.pointerId);
+  dialDrag={ acc:0, last:dialAngle(e, el) };
+}
+function dialPointerMove(e){
+  if(!dialDrag) return;
+  const el=$("#dial");
+  const a=dialAngle(e, el);
+  let d=a-dialDrag.last;
+  if(d>180) d-=360; if(d<-180) d+=360;
+  dialDrag.last=a; dialDrag.acc+=d;
+  const STEP=8;
+  while(Math.abs(dialDrag.acc)>=STEP){ const dir=dialDrag.acc>0?1:-1; bump(dir); dialDrag.acc-=STEP*dir; }
+}
+function dialPointerUp(){ dialDrag=null; }
+
+/* ============================================================
+   SPECULAR SWEEP — idle animation, or tilt-reactive via deviceorientation /
+   pointer position as a desktop fallback. Throttled with requestAnimationFrame.
+   ============================================================ */
+let sweepRaf=null, hasGyro=false;
+function setTilt(t){
+  if(sweepRaf) return;
+  sweepRaf=requestAnimationFrame(()=>{
+    sweepRaf=null; vm.tilt=t;
+    const sweep=$("#sweep"); if(!sweep) return;
+    const left = vm.tilt===null ? -20 : 50 + Math.max(-1,Math.min(1,vm.tilt))*58;
+    sweep.style.left=left+"%";
+    sweep.style.animation = vm.tilt===null ? "" : "none";
+    sweep.style.transition = vm.tilt===null ? "" : "left .16s ease-out";
+  });
+}
+function onDeviceOrientation(e){
+  if(e.gamma==null) return;
+  hasGyro=true;
+  setTilt(Math.max(-1, Math.min(1, e.gamma/42)));
+}
+function onCardPointerMove(e){
+  if(hasGyro) return;
+  const card=$("#resultCard"); if(!card) return;
+  const r=card.getBoundingClientRect();
+  setTilt(Math.max(-1, Math.min(1, ((e.clientX-r.left)/r.width)*2-1)));
+}
+function maybeRequestTiltPermission(){
+  if(vm._tiltRequested) return; vm._tiltRequested=true;
+  if(typeof DeviceOrientationEvent!=="undefined" && typeof DeviceOrientationEvent.requestPermission==="function"){
+    DeviceOrientationEvent.requestPermission().then(res=>{
+      if(res==="granted") window.addEventListener("deviceorientation", onDeviceOrientation);
+    }).catch(()=>{});
+  } else {
+    window.addEventListener("deviceorientation", onDeviceOrientation);
+  }
+}
+
+/* ============================================================
+   SCREEN NAVIGATION
+   ============================================================ */
+function renderScreens(){
+  const isBrew = vm.screen==="brew";
+  $("#screenTabs").classList.toggle("hidden", !isBrew);
+  $("#screenConvert").classList.toggle("on", isBrew && vm.mode==="convert");
+  $("#screenGuide").classList.toggle("on", isBrew && vm.mode==="guide");
+  $("#screenLibrary").classList.toggle("on", vm.screen==="library");
+  $("#screenCalibrate").classList.toggle("on", vm.screen==="calibrate");
+  $("#tabConvertBtn").classList.toggle("on", vm.mode==="convert");
+  $("#tabGuideBtn").classList.toggle("on", vm.mode==="guide");
+  $("#goBrewBtn").classList.toggle("on", vm.screen!=="library");
+  $("#goLibraryBtn").classList.toggle("on", vm.screen==="library");
+  $("#tabbarInd").style.transform = "translateX(" + (vm.screen==="library"?100:0) + "%)";
+  if(vm.screen==="brew" && vm.mode==="guide") renderGuide();
+  if(vm.screen==="library") renderLibrary();
+  if(vm.screen==="calibrate") renderCalibrate();
+  window.scrollTo(0,0);
+}
+function goScreen(screen){ vm.screen=screen; renderScreens(); }
+function goMode(mode){ vm.mode=mode; renderScreens(); if(mode==="convert") renderConvert(); }
+
+function renderAll(){
+  renderConvert();
+  if(vm.screen==="brew" && vm.mode==="guide") renderGuide();
+  if(vm.screen==="library") renderLibrary();
+  renderAbout();
+}
+
+/* ============================================================
+   BACKUP — everything lives in localStorage, which browsers can evict and
+   users can clear, so a file round-trip is the only real safety net.
+   ============================================================ */
+function exportBackup(){
+  try{
+    const blob=new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="grist-backup.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    toast("Backup exported");
+  }catch(e){ toast("Could not export"); }
+}
+function importBackup(e){
+  const file=e.target.files && e.target.files[0];
+  e.target.value="";                       // so re-picking the same file fires again
+  if(!file) return;
+  const fr=new FileReader();
+  fr.onload=()=>{
+    let s;
+    try{ s=JSON.parse(String(fr.result)); }
+    catch(err){ toast("That file isn't valid JSON"); return; }
+    if(!s || typeof s!=="object" || !Array.isArray(s.grinders) || !s.grinders.length){
+      toast("That doesn't look like a Grist backup"); return;
+    }
+    if(s.schemaVersion!==SCHEMA_VERSION){ toast("Backup is from a different version"); return; }
+    // accept it, then run the same per-field repairs init() applies on load,
+    // so a partial or older backup lands in a consistent state
+    state=s;
+    if(!Array.isArray(state.methods) || !state.methods.length) state.methods=JSON.parse(JSON.stringify(DEFAULT_METHODS));
+    if(!Array.isArray(state.setups)) state.setups=[];
+    if(!state.ui || typeof state.ui!=="object") state.ui=defaultState().ui;
+    if(!grinderById(state.ui.srcId)) state.ui.srcId=state.grinders[0].id;
+    if(!grinderById(state.ui.tgtId)) state.ui.tgtId=(state.grinders[1]||state.grinders[0]).id;
+    state.ui.pos = clampPos(grinderById(state.ui.srcId).scheme, state.ui.pos);
+    if(!state.methods.some(m=>m.name===state.ui.methodId)) state.ui.methodId=state.methods[0].name;
+    vm.cat = methodCategory(currentMethod());
+    save(); renderScreens(); renderAll();
+    toast("Backup restored");
+  };
+  fr.onerror=()=>toast("Could not read that file");
+  fr.readAsText(file);
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+function wireStatic(){
+  $("#tabConvertBtn").onclick=()=>goMode("convert");
+  $("#tabGuideBtn").onclick=()=>goMode("guide");
+  $("#kitchenOpenBtn").onclick=openKitchen;
+  $("#goBrewBtn").onclick=()=>goScreen("brew");
+  $("#goLibraryBtn").onclick=()=>goScreen("library");
+
+  $("#srcSel").onchange=e=>{ const g=grinderById(e.target.value); state.ui.srcId=g.id; state.ui.pos=clampPos(g.scheme, state.ui.pos); save(); renderConvert(); };
+  $("#tgtSel").onchange=e=>{ state.ui.tgtId=e.target.value; save(); renderConvert(); };
+  $("#swapBtn").onclick=()=>{
+    const oldSrc=currentSrc(), oldTgt=currentTgt(), um=currentUm();
+    const r=micronToTarget(oldTgt, um);
+    state.ui.srcId=oldTgt.id; state.ui.tgtId=oldSrc.id; state.ui.pos=r.pos;
+    save(); renderConvert();
+  };
+  $("#resultCard").addEventListener("pointermove", onCardPointerMove);
+
+  $("#decBtn").addEventListener("pointerdown", e=>startHold(-1, e.currentTarget));
+  $("#incBtn").addEventListener("pointerdown", e=>startHold(1, e.currentTarget));
+  $$("#decBtn,#incBtn").forEach(b=>{ b.addEventListener("pointerup", ()=>stopHold(b)); b.addEventListener("pointerleave", ()=>stopHold(b)); b.addEventListener("pointercancel", ()=>stopHold(b)); });
+  /* isTrusted guards against a range input's own default-value recompute
+     (some engines synthesize an 'input' when min/max change under the
+     current value) ever being mistaken for a real drag. */
+  $("#settingRange").oninput=e=>{ if(!e.isTrusted) return; const g=currentSrc(); state.ui.pos=snapPos(g.scheme, parseFloat(e.target.value)); save(); renderConvert(); };
+
+  $("#methodRowBtn").onclick=openMethodSheet;
+  $("#openSaveSheetBtn").onclick=openSaveSheet;
+  $("#confirmSaveBtn").onclick=confirmSaveSetup;
+
+  $("#sourBtn").onclick=()=>guideAdjust(-1);
+  $("#bitterBtn").onclick=()=>guideAdjust(1);
+
+  $$("[data-close-sheet]").forEach(b=>b.onclick=()=>closeSheet(b.dataset.closeSheet));
+  $$(".scrim").forEach(s=>s.addEventListener("click", e=>{ if(e.target===s) closeSheet(s.id); }));
+
+  $$("#libSeg button").forEach(b=>b.onclick=()=>{ vm.libTab=b.dataset.libtab; renderLibrary(); });
+  $("#setupsGoConvert").onclick=()=>{ goScreen("brew"); goMode("convert"); };
+  $("#setupsList").addEventListener("click", e=>{
+    const load=e.target.closest("[data-loadsetup]"); if(load){ loadSetup(state.setups[+load.dataset.loadsetup]); return; }
+    const del=e.target.closest("[data-delsetup]"); if(del){ state.setups.splice(+del.dataset.delsetup,1); save(); renderSetups(); }
+  });
+
+  $("#addGrinderBtn").onclick=()=>openAddGrinder(null);
+  $("#grindersList").addEventListener("click", e=>{
+    const pick=e.target.closest("[data-pickg]"); if(pick){ pickGrinder(pick.dataset.pickg); return; }
+    const cal=e.target.closest("[data-calibrate]"); if(cal){ openCalibrate(cal.dataset.calibrate); return; }
+    const edit=e.target.closest("[data-editg]"); if(edit){ openAddGrinder(edit.dataset.editg); return; }
+    const rem=e.target.closest("[data-removeg]"); if(rem){ removeGrinder(rem.dataset.removeg); }
+  });
+  $("#addSheetSaveBtn").onclick=saveAddGrinder;
+
+  $("#exportBtn").onclick=exportBackup;
+  $("#importBtn").onclick=()=>$("#importFile").click();
+  $("#importFile").onchange=importBackup;
+
+  $("#addBrewerBtn").onclick=()=>openBrewerSheet();
+  $("#brewersList").addEventListener("click", e=>{
+    const pick=e.target.closest("[data-pickb]"); if(pick){ pickBrewer(+pick.dataset.pickb); return; }
+    const edit=e.target.closest("[data-editb]"); if(edit){ openBrewerSheet(+edit.dataset.editb); return; }
+    const rem=e.target.closest("[data-removeb]"); if(rem){ removeBrewer(+rem.dataset.removeb); }
+  });
+  $("#brewerSaveBtn").onclick=saveBrewer;
+
+  $("#calBackBtn").onclick=()=>{ vm.screen="library"; vm.libTab="grinders"; renderScreens(); };
+  $("#calCancelBtn").onclick=()=>{ vm.screen="library"; vm.libTab="grinders"; renderScreens(); };
+  $("#calSaveBtn").onclick=saveCalibration;
+  $("#calAdvancedBtn").onclick=openAdvancedAnchors;
+  $("#addAnchorRowBtn").onclick=()=>{
+    const g=grinderById(vm.calId);
+    const wrap=$("#anchorRows");
+    const div=document.createElement("div");
+    div.innerHTML=anchorRowHtml(g,{nativeGuess:"",microns:""});
+    wrap.appendChild(div.firstElementChild);
+  };
+  $("#anchorRows").addEventListener("click", e=>{ if(e.target.closest("[data-delanchor]")) e.target.closest(".anchorRow").remove(); });
+  $("#saveAnchorsBtn").onclick=saveAdvancedAnchors;
+
+  $("#kDecBtn").addEventListener("pointerdown", e=>startHold(-1, e.currentTarget));
+  $("#kIncBtn").addEventListener("pointerdown", e=>startHold(1, e.currentTarget));
+  $$("#kDecBtn,#kIncBtn").forEach(b=>{ b.addEventListener("pointerup", ()=>stopHold(b)); b.addEventListener("pointerleave", ()=>stopHold(b)); b.addEventListener("pointercancel", ()=>stopHold(b)); });
+  $("#kExitBtn").onclick=closeKitchen;
+  const dial=$("#dial");
+  dial.addEventListener("pointerdown", dialPointerDown);
+  dial.addEventListener("pointermove", dialPointerMove);
+  dial.addEventListener("pointerup", dialPointerUp);
+  dial.addEventListener("pointercancel", dialPointerUp);
+}
+
 /* ============================================================
    INSTALL — offline home-screen app, no store involved
    ============================================================ */
@@ -1546,7 +2070,7 @@ function initInstall(){
     installPrompt=e;
     msg.textContent="Install Grist for offline use — it works with no connection once added.";
     btn.classList.remove("hidden");
-    row.classList.remove("hidden");
+    row.classList.add("show");
   });
 
   btn.addEventListener("click", async ()=>{
@@ -1560,64 +2084,36 @@ function initInstall(){
       : "You can install later from your browser menu.";
   });
 
-  window.addEventListener("appinstalled", ()=>{ installPrompt=null; row.classList.add("hidden"); });
+  window.addEventListener("appinstalled", ()=>{ installPrompt=null; row.classList.remove("show"); });
 
   if(isIOS()){
     msg.innerHTML="<b>Add Grist to your home screen</b> for offline use: tap Share, then “Add to Home Screen”.";
-    row.classList.remove("hidden");
+    row.classList.add("show");
   }
 }
 
 /* ============================================================
-   THEME — system by default, explicit light/dark overrides it
+   INIT
    ============================================================ */
-const THEMES = ["system","light","dark"];
-function currentTheme(){
-  const t = state && state.ui && state.ui.theme;
-  return THEMES.includes(t) ? t : "system";
-}
-function applyTheme(){
-  const t = currentTheme();
-  if(t === "system") document.documentElement.removeAttribute("data-theme");
-  else document.documentElement.setAttribute("data-theme", t);
-  // browser chrome follows the resolved background
-  const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim();
-  const meta = $("#themeColor");
-  if(meta && bg) meta.setAttribute("content", bg);
-  $$("[data-theme-set]").forEach(b=>
-    b.setAttribute("aria-pressed", String(b.dataset.themeSet === t)));
-  // SVG colours are read from computed style, so the scale must be redrawn
-  redrawScale();
-}
-function setTheme(t){
-  if(!THEMES.includes(t)) return;
-  state.ui.theme = t; save(); applyTheme();
-}
-function wireTheme(){
-  $$("[data-theme-set]").forEach(b=>
-    b.addEventListener("click", ()=>setTheme(b.dataset.themeSet)));
-  const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme:dark)");
-  if(mq && mq.addEventListener) mq.addEventListener("change", ()=>{ if(currentTheme()==="system") applyTheme(); });
-}
-
 function init(){
   load();
-  // ensure ui defaults valid
-  if(!THEMES.includes(state.ui.theme)) state.ui.theme="system";
-  if(!grinderById(state.ui.srcId)&&state.ui.srcId!=="microns") state.ui.srcId="ode2";
-  if(!grinderById(state.ui.tgtId)&&state.ui.tgtId!=="microns") state.ui.tgtId="c40";
-  targetsSel.gid=state.grinders[0]?.id||"ode2";
-  mtSel.gid=targetsSel.gid; diSel.gid=state.grinders.find(g=>g.scheme.type==="clicks")?.id||targetsSel.gid;
-  initFooterAndDisclaimer();
+  // defensive: a pre-redesign backup (or a hand-edited/older export) may
+  // predate one of these fields entirely — fall back per-field rather than
+  // discarding the whole import.
+  if(!Array.isArray(state.grinders) || !state.grinders.length) state.grinders=SEED_GRINDERS.map(freshGrinderFromSeed);
+  if(!Array.isArray(state.methods) || !state.methods.length) state.methods=JSON.parse(JSON.stringify(DEFAULT_METHODS));
+  if(!Array.isArray(state.setups)) state.setups=[];
+  if(!state.ui || typeof state.ui!=="object") state.ui={srcId:state.grinders[0].id, tgtId:(state.grinders[1]||state.grinders[0]).id, pos:posRange(state.grinders[0].scheme).min, methodId:state.methods[0].name};
+  if(!grinderById(state.ui.srcId)) state.ui.srcId=state.grinders[0].id;
+  if(!grinderById(state.ui.tgtId)) state.ui.tgtId=(state.grinders[1]||state.grinders[0]).id;
+  state.ui.pos = clampPos(grinderById(state.ui.srcId).scheme, state.ui.pos);
+  if(!state.methods.some(m=>m.name===state.ui.methodId)) state.ui.methodId=state.methods[0].name;
+  vm.cat = methodCategory(currentMethod());
+
   wireStatic();
-  wireTheme();
-  applyTheme();
+  renderScreens();
+  renderAll();
   initInstall();
-  refreshConverterPickers();
-  initFirstRun();
-  // the scale is measured, so it must follow width changes
-  let rt=null;
-  window.addEventListener("resize", ()=>{ clearTimeout(rt); rt=setTimeout(redrawScale, 120); });
 }
 init();
 </script>
