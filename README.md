@@ -12,7 +12,7 @@ It's a **single, self-contained HTML file**: inline CSS + vanilla JS, zero exter
 
 ## Features
 
-- **Instant converter** — pick source + target grinder, type a setting in native notation, get the equivalent live (no "convert" button). Handles five setting schemes: simple steps, numbered sub-steps (e.g. Ode `3.2`), clicks, rotations-clicks (e.g. 1Zpresso `1.3.2`, Kingrinder `2.42`), and stepless.
+- **Instant converter** — pick source + target grinder, then set the value by typing, by ± detent buttons, or by dragging a slider, get the equivalent live (no "convert" button). Handles five setting schemes: simple steps, numbered sub-steps (e.g. Ode `3.2`), clicks, rotations-clicks (e.g. 1Zpresso `1.3.2`, Kingrinder `2.42`), and stepless.
 - **Microns as a first-class value** — every conversion shows the intermediate particle size, and you can convert microns ⇄ any grinder directly.
 - **Snapping + residual** — converting into a stepped grinder snaps to the nearest legal detent and shows the micron residual and any clamp warning.
 - **Piecewise-linear calibration** — each grinder carries micron *anchors*; non-linear grinders (Encore ESP's two-zone burr, Niche's sensitive espresso end) are modeled with extra anchors, all user-editable.

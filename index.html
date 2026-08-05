@@ -41,7 +41,10 @@ h1,h2,h3{margin:0 0 .4em;line-height:1.2}
 h2{font-size:1.15rem}
 h3{font-size:1rem}
 a{color:var(--accent)}
-button{font:inherit;cursor:pointer}
+/* touch-action:manipulation stops a fast second tap being read as
+   double-tap-to-zoom, which made repeated +/- presses zoom the page.
+   Pinch-zoom is untouched, so accessibility zoom still works. */
+button{font:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .wrap{max-width:720px;margin:0 auto;padding:0 14px 90px}
 header.app{padding:16px 14px 8px;max-width:720px;margin:0 auto;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 header.app .logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
@@ -74,8 +77,20 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 /* setting input + steppers */
 .setting{display:flex;gap:8px;align-items:stretch}
 .setting input{flex:1}
-.stepbtn{width:var(--tap);min-width:var(--tap);border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;font-size:1.3rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.stepbtn{width:var(--tap);min-width:var(--tap);border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;font-size:1.3rem;font-weight:700;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
 .stepbtn:active{background:var(--accent);color:var(--accent-ink)}
+/* drag slider — the finger-friendly way to move through the range */
+.sliderRow{margin-top:12px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:0;padding:0;background:none;border:0;min-height:0;touch-action:pan-y}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-11px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);box-shadow:var(--shadow)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--accent);border:2px solid var(--panel)}
+/* the thumb carries the focus indicator, so suppress the box around the track */
+input[type=range]:focus{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.sliderEnds{display:flex;justify-content:space-between;color:var(--muted);font-size:.74rem;margin-top:-3px}
 /* result */
 .result{background:var(--panel2);border-radius:12px;padding:14px;margin-top:6px;text-align:center}
 .result .big{font-size:2.2rem;font-weight:800;letter-spacing:-.02em;line-height:1.05}
@@ -152,6 +167,10 @@ footer.app a{color:var(--accent)}
       <input id="srcSet" type="text" inputmode="decimal" autocomplete="off" spellcheck="false">
       <button class="stepbtn" id="srcPlus" aria-label="one detent coarser" type="button">+</button>
     </div>
+    <div class="sliderRow" id="srcSliderRow">
+      <input id="srcRange" type="range" aria-label="Grind setting">
+      <div class="sliderEnds"><span id="srcRangeLo"></span><span id="srcRangeHi"></span></div>
+    </div>
     <div class="err" id="srcErr"></div>
 
     <div class="swap"><button class="swapbtn" id="swapBtn" type="button">⇅ swap</button></div>
@@ -170,7 +189,7 @@ footer.app a{color:var(--accent)}
       <button class="btn ghost small" id="favHint" type="button" style="min-height:0;padding:4px 8px;text-transform:none;letter-spacing:0">★ favorites</button>
     </label>
     <div class="scaleWrap"><div id="scale"></div></div>
-    <div class="tiny muted" style="margin-top:6px">Background zones = brew-method micron targets. Bars = each grinder's range. Dots = current setting.</div>
+    <div class="tiny muted" style="margin-top:6px">Top rows = brew-method micron targets, highlighted when your current setting falls inside. Lower bars = each grinder's full range, with a dot at its equivalent setting. Dashed line = current particle size.</div>
   </div>
 
   <div class="disclaimer" id="mainDisclaimer"></div>
@@ -278,7 +297,7 @@ footer.app a{color:var(--accent)}
    Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.3.0";
 const SCHEMA_VERSION = 1;
 const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
@@ -671,6 +690,48 @@ function refreshConverterPickers(){
   updateSrcMeta(); updateTgtMeta(); renderConvert();
 }
 function isMicron(id){ return id==="microns"; }
+
+/* ---- source slider: same value as the text box, easier with a thumb ---- */
+function configSlider(){
+  const r=$("#srcRange"), lo=$("#srcRangeLo"), hi=$("#srcRangeHi");
+  if(!r) return;
+  const id=state.ui.srcId;
+  if(isMicron(id)){
+    r.min=0; r.max=1500; r.step=5;
+    lo.textContent="0 µm"; hi.textContent="1500 µm";
+  } else {
+    const g=grinderById(id); if(!g) return;
+    const R=posRange(g.scheme);
+    r.min=R.min; r.max=R.max;
+    // stepped grinders move one detent at a time; stepless uses its own precision
+    r.step = isStepped(g.scheme) ? 1 : Math.pow(10, -(g.scheme.precision||1));
+    lo.textContent=formatSetting(g.scheme,R.min).replace(" clicks","");
+    hi.textContent=formatSetting(g.scheme,R.max).replace(" clicks","");
+  }
+  syncSliderFromInput();
+}
+function syncSliderFromInput(){
+  const r=$("#srcRange"); if(!r) return;
+  const id=state.ui.srcId, raw=$("#srcSet").value;
+  if(isMicron(id)){
+    const v=parseFloat(raw);
+    if(!isNaN(v)) r.value=Math.max(0,Math.min(1500,v));
+    return;
+  }
+  const g=grinderById(id); if(!g) return;
+  const p=parseSetting(g.scheme, raw);
+  if(p.ok) r.value=p.pos;
+}
+function onSliderInput(){
+  const id=state.ui.srcId, v=parseFloat($("#srcRange").value);
+  if(isMicron(id)) $("#srcSet").value=String(Math.round(v));
+  else {
+    const g=grinderById(id);
+    $("#srcSet").value=formatSetting(g.scheme, snapPos(g.scheme, v)).replace(" clicks","");
+  }
+  renderConvert();
+}
+
 function updateSrcMeta(){
   const id=state.ui.srcId, box=$("#srcMeta"), label=$("#srcSetLabel");
   const steppers=$("#srcMinus"), plus=$("#srcPlus");
@@ -679,6 +740,7 @@ function updateSrcMeta(){
     label.textContent="Microns (µm)";
     $("#srcSet").setAttribute("inputmode","numeric");
     steppers.classList.add("hidden"); plus.classList.add("hidden");
+    configSlider();
     return;
   }
   const g=grinderById(id);
@@ -688,6 +750,7 @@ function updateSrcMeta(){
   const stepped=isStepped(g.scheme);
   steppers.classList.toggle("hidden",!stepped);
   plus.classList.toggle("hidden",!stepped);
+  configSlider();
 }
 function updateTgtMeta(){
   const id=state.ui.tgtId, box=$("#tgtMeta");
@@ -736,6 +799,7 @@ function readSource(){
 
 function renderConvert(){
   state.ui.srcSet=$("#srcSet").value;
+  syncSliderFromInput();
   const src=readSource();
   const errBox=$("#srcErr"), res=$("#convResult"), warnBox=$("#convWarn");
   warnBox.innerHTML="";
@@ -1336,6 +1400,7 @@ function wireStatic(){
   $("#srcG").onchange=e=>{ state.ui.srcId=e.target.value; updateSrcMeta(); renderConvert(); };
   $("#tgtG").onchange=e=>{ state.ui.tgtId=e.target.value; updateTgtMeta(); renderConvert(); };
   $("#srcSet").oninput=renderConvert;
+  $("#srcRange").oninput=onSliderInput;
   $("#srcMinus").onclick=()=>stepSource(-1);
   $("#srcPlus").onclick=()=>stepSource(1);
   $("#swapBtn").onclick=()=>{
