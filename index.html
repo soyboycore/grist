@@ -7,6 +7,12 @@
 <meta name="description" content="Grist — convert coffee grind settings between grinders using microns as the common currency. Offline, private, no accounts.">
 <meta name="author" content="soyboycore">
 <meta name="theme-color" id="themeColor" content="#f7f8f8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Grist">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Grist — Coffee Grind Size Converter</title>
 <style>
 /* Grist — single-file app. Author: soyboycore. */
@@ -91,6 +97,9 @@ input[type=range]:focus{outline:none}
 input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
 input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
 .sliderEnds{display:flex;justify-content:space-between;color:var(--muted);font-size:.74rem;margin-top:-3px}
+#installRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#installRow #installMsg{flex:1;min-width:180px;color:var(--muted)}
+#installRow .btn{white-space:nowrap}
 /* result */
 .result{background:var(--panel2);border-radius:12px;padding:14px;margin-top:6px;text-align:center}
 .result .big{font-size:2.2rem;font-weight:800;letter-spacing:-.02em;line-height:1.05}
@@ -283,6 +292,12 @@ footer.app a{color:var(--accent)}
   <button role="tab" data-tab="setups" aria-selected="false"><span class="ic">☰</span>Setups</button>
 </nav>
 
+<div class="wrap" id="installWrap" style="padding-bottom:0">
+  <div class="card tight hidden" id="installRow">
+    <div class="small" id="installMsg"></div>
+    <button class="btn primary hidden" id="installBtn" type="button">Install Grist</button>
+  </div>
+</div>
 <footer class="app" id="appFooter"></footer>
 
 <!-- generic modal -->
@@ -297,7 +312,7 @@ footer.app a{color:var(--accent)}
    Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v1.3.0";
+const APP_VERSION = "v1.4.0";
 const SCHEMA_VERSION = 1;
 const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
@@ -1493,6 +1508,60 @@ function initFirstRun(){
   }
 }
 /* ============================================================
+   INSTALL — offline home-screen app, no store involved
+   ============================================================ */
+function isStandalone(){
+  return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+      || window.navigator.standalone === true;
+}
+function isIOS(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+      || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+}
+let installPrompt=null;
+function initInstall(){
+  // Service workers cannot run from file://, but the page still works there.
+  if(location.protocol==="file:") return;
+
+  /* Register unconditionally — including when already installed. An installed
+     app whose site data was cleared must be able to register again, so this
+     must not sit behind the isStandalone() check below. */
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+
+  const row=$("#installRow"), msg=$("#installMsg"), btn=$("#installBtn");
+  if(!row || isStandalone()) return; // already installed: nothing to offer
+
+  // Chrome and friends fire this when the app qualifies; iOS never does.
+  window.addEventListener("beforeinstallprompt", (e)=>{
+    e.preventDefault();
+    installPrompt=e;
+    msg.textContent="Install Grist for offline use — it works with no connection once added.";
+    btn.classList.remove("hidden");
+    row.classList.remove("hidden");
+  });
+
+  btn.addEventListener("click", async ()=>{
+    if(!installPrompt) return;
+    installPrompt.prompt();
+    const res=await installPrompt.userChoice.catch(()=>null);
+    installPrompt=null;
+    btn.classList.add("hidden");
+    msg.textContent = res && res.outcome==="accepted"
+      ? "Installed — open Grist from your home screen."
+      : "You can install later from your browser menu.";
+  });
+
+  window.addEventListener("appinstalled", ()=>{ installPrompt=null; row.classList.add("hidden"); });
+
+  if(isIOS()){
+    msg.innerHTML="<b>Add Grist to your home screen</b> for offline use: tap Share, then “Add to Home Screen”.";
+    row.classList.remove("hidden");
+  }
+}
+
+/* ============================================================
    THEME — system by default, explicit light/dark overrides it
    ============================================================ */
 const THEMES = ["system","light","dark"];
@@ -1536,6 +1605,7 @@ function init(){
   wireStatic();
   wireTheme();
   applyTheme();
+  initInstall();
   refreshConverterPickers();
   initFirstRun();
   // the scale is measured, so it must follow width changes

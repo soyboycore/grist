@@ -4,11 +4,22 @@
 
 You know a recipe's setting on one grinder and want the equivalent on another. Grist normalizes every grinder's setting to a particle size in microns, then converts to the target grinder's **native notation** — clicks, numbered sub-steps, rotations, stepless dials, and more.
 
-It's a **single, self-contained HTML file**: inline CSS + vanilla JS, zero external requests, zero build step. All your data lives in your browser's `localStorage`. It works fully offline — save `index.html` to disk and open it.
+The app is **one self-contained HTML file**: inline CSS + vanilla JS, zero external requests, zero build step. All your data lives in your browser's `localStorage` — no accounts, no server, nothing leaves your device. `index.html` runs on its own, so you can also just save it to disk and open it.
 
 ## Live demo
 
 **https://soyboycore.github.io/grist/**
+
+## Install it
+
+Grist is a Progressive Web App, so it installs straight from the browser — no app store, no account.
+
+- **iPhone / iPad:** open the link in Safari, tap Share, then **Add to Home Screen**.
+- **Android / desktop Chrome or Edge:** an **Install Grist** button appears at the bottom of the page (or use the install icon in the address bar).
+
+Installed, it opens fullscreen from your home screen and **works with no connection at all** — handy at a kitchen counter or in a café with bad wifi. A service worker caches the app; page loads are network-first, so you always get the latest version when you're online and the cached one when you're not.
+
+Alongside `index.html` the repo carries `manifest.webmanifest`, `sw.js`, and three PNG icons. Those exist purely to make it installable — the HTML file itself still runs standalone without them.
 
 ## Features
 
