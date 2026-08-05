@@ -19,11 +19,12 @@ It's a **single, self-contained HTML file**: inline CSS + vanilla JS, zero exter
 - **Multi-target mode** — see one setting across every favorite grinder at once ("I'm at a friend's place").
 - **Brew-method targets** — pick a method, see the recommended setting range (native + microns) for your grinder; send the midpoint into the converter.
 - **Dial-in helper** — sour/weak → finer, bitter/harsh → coarser, sized in your grinder's native steps.
-- **Visual micron scale** — inline SVG axis (0–1500 µm) with brew-method target zones, each grinder's covered range, and a marker for the current setting.
+- **Visual micron scale** — inline SVG chart on a shared 0–1500 µm axis: one row per brew-method target and one per grinder, with a marker for the current setting. Sized to the measured container width so labels stay legible on a phone.
 - **Custom grinder wizard** — add any grinder you own in under a minute (name → scheme → config → calibration).
 - **Saved setups** — named recipes (grinder + setting + method + dose/ratio + notes).
 - **Export / import** — back up or share everything as a versioned JSON file.
-- Mobile-first, large touch targets, light + dark mode via `prefers-color-scheme`, no external fonts.
+- **Light / dark / auto** — follows your system by default, with an explicit override in the header that persists.
+- Mobile-first, large touch targets, no external fonts.
 
 ## Adding a custom grinder (3 lines)
 

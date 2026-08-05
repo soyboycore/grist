@@ -6,8 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="Grist — convert coffee grind settings between grinders using microns as the common currency. Offline, private, no accounts.">
 <meta name="author" content="soyboycore">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8f8">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0f0e">
+<meta name="theme-color" id="themeColor" content="#f7f8f8">
 <title>Grist — Coffee Grind Size Converter</title>
 <style>
 /* Grist — single-file app. Author: soyboycore. */
@@ -17,12 +16,19 @@
   --bad:#b91c1c; --chip:#e7ecec; --shadow:0 1px 2px rgba(16,20,19,.06),0 6px 18px rgba(16,20,19,.05);
   --radius:14px; --tap:44px;
 }
+/* dark applies when the system asks for it, unless light is explicitly chosen */
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     --bg:#0a0f0e; --panel:#131a19; --panel2:#1b2423; --ink:#e8eceb; --muted:#8d9c99;
     --line:#24302e; --accent:#2dd4bf; --accent-ink:#06201d; --good:#4ade80; --warn:#fbbf24;
     --bad:#f87171; --chip:#1f2a28; --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.45);
   }
+}
+/* ...and when dark is explicitly chosen, whatever the system says */
+:root[data-theme="dark"]{
+  --bg:#0a0f0e; --panel:#131a19; --panel2:#1b2423; --ink:#e8eceb; --muted:#8d9c99;
+  --line:#24302e; --accent:#2dd4bf; --accent-ink:#06201d; --good:#4ade80; --warn:#fbbf24;
+  --bad:#f87171; --chip:#1f2a28; --shadow:0 1px 3px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -41,6 +47,10 @@ header.app{padding:16px 14px 8px;max-width:720px;margin:0 auto;display:flex;alig
 header.app .logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
 header.app .logo .dot{display:inline-block;width:.44em;height:.44em;border-radius:50%;background:var(--accent);margin-right:.36em;vertical-align:.06em}
 header.app .tag{color:var(--muted);font-size:.82rem}
+header.app .themeSet{margin-left:auto;display:flex;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px}
+header.app .themeSet button{border:0;background:none;color:var(--muted);font-size:.74rem;font-weight:600;padding:5px 10px;border-radius:999px;min-height:0;letter-spacing:.01em}
+header.app .themeSet button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+header.app .themeSet button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0;box-shadow:var(--shadow)}
 .card.tight{padding:12px}
 label{display:block;font-weight:600;font-size:.82rem;color:var(--muted);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}
@@ -120,6 +130,11 @@ footer.app a{color:var(--accent)}
 <header class="app">
   <div class="logo"><i class="dot" aria-hidden="true"></i>Grist</div>
   <div class="tag">grind size converter · microns as the common currency</div>
+  <div class="themeSet" role="group" aria-label="Colour theme">
+    <button type="button" data-theme-set="system">Auto</button>
+    <button type="button" data-theme-set="light">Light</button>
+    <button type="button" data-theme-set="dark">Dark</button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -263,7 +278,7 @@ footer.app a{color:var(--accent)}
    Author: soyboycore · https://github.com/soyboycore/grist
    Single file, offline, MIT. All data in localStorage.
    ============================================================ */
-const APP_VERSION = "v1.1.0";
+const APP_VERSION = "v1.2.0";
 const SCHEMA_VERSION = 1;
 const STORE_KEY = "grist.v1", LEGACY_STORE_KEY = "grindbridge.v1";
 
@@ -602,7 +617,7 @@ function defaultState(){
     grinders:SEED_GRINDERS.map(freshGrinderFromSeed),
     methods:JSON.parse(JSON.stringify(DEFAULT_METHODS)),
     setups:[],
-    ui:{srcId:"ode2", srcSet:"3", tgtId:"c40", firstRun:true}
+    ui:{srcId:"ode2", srcSet:"3", tgtId:"c40", firstRun:true, theme:"system"}
   };
 }
 function load(){
@@ -771,58 +786,95 @@ function scaleGrinders(){
   state.grinders.filter(g=>g.fav).forEach(g=>ids.add(g.id));
   return Array.from(ids).map(grinderById).filter(Boolean);
 }
+/* Every label lives in a left gutter on its own row, so labels can never
+   collide. The viewBox width is the measured container width, which makes
+   1 SVG unit == 1 CSS px — font sizes are then literal and stay legible on
+   a phone instead of being scaled down with the drawing. */
+let lastScaleUm = null;
+function redrawScale(){ if($("#scale")) renderScale(lastScaleUm); }
+
 function renderScale(currentUm){
-  const MAXU=1500, W=680, padL=8, padR=8, axisW=W-padL-padR;
+  lastScaleUm = currentUm;
+  const host=$("#scale");
+  if(!host) return;
+  const MAXU=1500;
   const grinders=scaleGrinders();
-  const rowH=26, top=54, bottomAxis=22;
-  const H=top + grinders.length*rowH + bottomAxis + 6;
-  const x=um=>padL + Math.max(0,Math.min(MAXU,um))/MAXU*axisW;
+  const methods=state.methods;
+
+  const W=Math.round(Math.max(260, host.clientWidth || 680));
+  const gutter=Math.round(Math.min(132, Math.max(70, W*0.30)));
+  const padR=12, plotX=gutter, plotW=Math.max(80, W-gutter-padR);
+
+  const titleH=16, mRow=16, midGap=23, gRow=30, axisH=21, padL=2;
+  const mTop=titleH+6;
+  const mBot=mTop+methods.length*mRow;
+  const gTop=mBot+midGap;
+  const gBot=gTop+grinders.length*gRow;
+  const H=gBot+axisH;
+
+  const x=um=>plotX + Math.max(0,Math.min(MAXU,um))/MAXU*plotW;
   const css=getComputedStyle(document.body);
-  const line=css.getPropertyValue("--line"), ink=css.getPropertyValue("--ink"),
-        muted=css.getPropertyValue("--muted"), accent=css.getPropertyValue("--accent");
-  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px" role="img" aria-label="micron scale">`;
-  // method bands
-  const bands=state.methods;
-  bands.forEach((m,i)=>{
-    const x0=x(m.min), x1=x(m.max);
-    const hue=(i*37)%360;
-    s+=`<rect x="${x0}" y="${top-8}" width="${x1-x0}" height="${grinders.length*rowH+8}" fill="hsl(${hue} 60% 55% / .10)"/>`;
-  });
-  // axis ticks
-  for(let u=0;u<=MAXU;u+=250){
+  const line=css.getPropertyValue("--line").trim(), ink=css.getPropertyValue("--ink").trim(),
+        muted=css.getPropertyValue("--muted").trim(), accent=css.getPropertyValue("--accent").trim(),
+        panel=css.getPropertyValue("--panel").trim();
+
+  // conservative per-char estimate — overflowing the gutter clips the label
+  const maxChars=Math.max(7, Math.floor((gutter-10-padL)/6.1));
+  const fit=t=>{ t=String(t); return t.length>maxChars ? t.slice(0,maxChars-1)+"…" : t; };
+  const step = plotW<200 ? 750 : plotW<300 ? 500 : 250;
+
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" `+
+        `aria-label="Particle size scale: brew-method target ranges and the span of each grinder, in microns">`;
+
+  s+=`<text x="${padL}" y="11" font-size="10.5" fill="${muted}" letter-spacing=".04em">PARTICLE SIZE (µm) · BREW TARGETS</text>`;
+
+  // vertical gridlines span both sections so the two read on one axis
+  for(let u=0;u<=MAXU;u+=step){
     const xx=x(u);
-    s+=`<line x1="${xx}" y1="${top-8}" x2="${xx}" y2="${top+grinders.length*rowH}" stroke="${line}" stroke-width="1"/>`;
-    s+=`<text x="${xx}" y="${top+grinders.length*rowH+16}" font-size="10" fill="${muted}" text-anchor="middle">${u}</text>`;
+    s+=`<line x1="${xx}" y1="${mTop-3}" x2="${xx}" y2="${gBot+3}" stroke="${line}" stroke-width="1"/>`;
+    s+=`<text x="${xx}" y="${gBot+16}" font-size="10" fill="${muted}" text-anchor="middle">${u}</text>`;
   }
-  s+=`<text x="${padL}" y="16" font-size="11" fill="${muted}">Particle size (µm) — brew-method target zones shaded</text>`;
-  // method labels row
-  bands.forEach((m,i)=>{
-    const cx=(x(m.min)+x(m.max))/2; const hue=(i*37)%360;
-    const y=32+(i%2)*11;
-    s+=`<text x="${cx}" y="${y}" font-size="8.5" fill="hsl(${hue} 55% 45%)" text-anchor="middle">${esc(m.name.split(" / ")[0])}</text>`;
-  });
-  // current µm marker line
+
+  // current value: drawn before labels so text stays on top
   if(currentUm!=null){
     const cx=x(currentUm);
-    s+=`<line x1="${cx}" y1="${top-8}" x2="${cx}" y2="${top+grinders.length*rowH}" stroke="${accent}" stroke-width="2" stroke-dasharray="3 2"/>`;
+    s+=`<line x1="${cx}" y1="${mTop-3}" x2="${cx}" y2="${gBot+3}" stroke="${accent}" stroke-width="2" stroke-dasharray="3 2"/>`;
   }
-  // grinder rows
+
+  // brew-method target ranges — one row each
+  methods.forEach((m,i)=>{
+    const y=mTop+i*mRow, cy=y+mRow/2;
+    const hit = currentUm!=null && currentUm>=m.min && currentUm<=m.max;
+    const x0=x(m.min), w=Math.max(2,x(m.max)-x(m.min));
+    s+=`<rect x="${x0}" y="${cy-4.5}" width="${w}" height="9" rx="4.5" fill="${accent}" opacity="${hit?0.42:0.16}"/>`;
+    s+=`<text x="${gutter-8}" y="${cy+3.5}" font-size="10" text-anchor="end" `+
+       `fill="${hit?accent:muted}"${hit?' font-weight="600"':''}>`+
+       `<title>${esc(m.name)} · ${m.min}–${m.max} µm</title>${esc(fit(m.name.split(" / ")[0]))}</text>`;
+  });
+
+  s+=`<line x1="0" y1="${mBot+8}" x2="${W}" y2="${mBot+8}" stroke="${line}" stroke-width="1"/>`;
+  s+=`<text x="${padL}" y="${mBot+20}" font-size="10.5" fill="${muted}" letter-spacing=".04em">YOUR GRINDERS</text>`;
+
+  /* Grinder names sit above their bar rather than in the gutter — names like
+     "Comandante C40 MK4" do not fit a phone-width gutter, and truncating the
+     one label the user most needs to read is the wrong trade. */
   grinders.forEach((g,i)=>{
-    const y=top + i*rowH + rowH/2;
+    const rowTop=gTop+i*gRow;
+    const cy=rowTop+21;
     const mr=micronRange(g);
-    s+=`<rect x="${x(mr.lo)}" y="${y-5}" width="${Math.max(2,x(mr.hi)-x(mr.lo))}" height="10" rx="5" fill="${line}"/>`;
-    s+=`<text x="${padL}" y="${y-8}" font-size="10" fill="${ink}">${esc(g.name)}</text>`;
-    // marker for current setting on this grinder
+    s+=`<text x="${padL}" y="${rowTop+11}" font-size="11" fill="${ink}">`+
+       `${esc(g.name)} <tspan fill="${muted}" font-size="10">${Math.round(mr.lo)}–${Math.round(mr.hi)} µm</tspan></text>`;
+    s+=`<rect x="${x(mr.lo)}" y="${cy-5}" width="${Math.max(2,x(mr.hi)-x(mr.lo))}" height="10" rx="5" fill="${muted}" opacity=".26"/>`;
     let markUm=null;
     if(g.id===state.ui.srcId){ const sr=readSource(); if(sr.ok) markUm=sr.um; }
-    else if(g.id===state.ui.tgtId && currentUm!=null){ markUm=micronToTarget(g,currentUm).micron; }
     else if(currentUm!=null){ markUm=micronToTarget(g,currentUm).micron; }
     if(markUm!=null){
-      s+=`<circle cx="${x(markUm)}" cy="${y}" r="5" fill="${accent}" stroke="#fff" stroke-width="1"/>`;
+      s+=`<circle cx="${x(markUm)}" cy="${cy}" r="5" fill="${accent}" stroke="${panel}" stroke-width="1.5"/>`;
     }
   });
+
   s+=`</svg>`;
-  $("#scale").innerHTML=s;
+  host.innerHTML=s;
 }
 
 /* ============================================================
@@ -1375,17 +1427,55 @@ function initFirstRun(){
     hint.remove();
   }
 }
+/* ============================================================
+   THEME — system by default, explicit light/dark overrides it
+   ============================================================ */
+const THEMES = ["system","light","dark"];
+function currentTheme(){
+  const t = state && state.ui && state.ui.theme;
+  return THEMES.includes(t) ? t : "system";
+}
+function applyTheme(){
+  const t = currentTheme();
+  if(t === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  // browser chrome follows the resolved background
+  const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim();
+  const meta = $("#themeColor");
+  if(meta && bg) meta.setAttribute("content", bg);
+  $$("[data-theme-set]").forEach(b=>
+    b.setAttribute("aria-pressed", String(b.dataset.themeSet === t)));
+  // SVG colours are read from computed style, so the scale must be redrawn
+  redrawScale();
+}
+function setTheme(t){
+  if(!THEMES.includes(t)) return;
+  state.ui.theme = t; save(); applyTheme();
+}
+function wireTheme(){
+  $$("[data-theme-set]").forEach(b=>
+    b.addEventListener("click", ()=>setTheme(b.dataset.themeSet)));
+  const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme:dark)");
+  if(mq && mq.addEventListener) mq.addEventListener("change", ()=>{ if(currentTheme()==="system") applyTheme(); });
+}
+
 function init(){
   load();
   // ensure ui defaults valid
+  if(!THEMES.includes(state.ui.theme)) state.ui.theme="system";
   if(!grinderById(state.ui.srcId)&&state.ui.srcId!=="microns") state.ui.srcId="ode2";
   if(!grinderById(state.ui.tgtId)&&state.ui.tgtId!=="microns") state.ui.tgtId="c40";
   targetsSel.gid=state.grinders[0]?.id||"ode2";
   mtSel.gid=targetsSel.gid; diSel.gid=state.grinders.find(g=>g.scheme.type==="clicks")?.id||targetsSel.gid;
   initFooterAndDisclaimer();
   wireStatic();
+  wireTheme();
+  applyTheme();
   refreshConverterPickers();
   initFirstRun();
+  // the scale is measured, so it must follow width changes
+  let rt=null;
+  window.addEventListener("resize", ()=>{ clearTimeout(rt); rt=setTimeout(redrawScale, 120); });
 }
 init();
 </script>
