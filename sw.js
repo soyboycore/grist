@@ -5,14 +5,22 @@
    get the last one cached. Icons and the manifest are cache-first since they
    rarely change — bump CACHE when they do. */
 
-const CACHE = "grist-v1";
+const CACHE = "grist-v2";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./icon-64.png",
   "./icon-180.png",
   "./icon-192.png",
   "./icon-512.png",
+  "./icon-maskable-512.png",
+  // self-hosted so the app keeps its typography with no network and no
+  // third-party request; cache-first below, since these never change
+  "./fonts/plex-sans-var.woff2",
+  "./fonts/plex-mono-500.woff2",
+  "./fonts/plex-mono-600.woff2",
+  "./fonts/plex-mono-700.woff2",
 ];
 
 self.addEventListener("install", (e) => {
